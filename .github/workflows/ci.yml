@@ -15,4 +15,4 @@ jobs:
   ansible-lint:
     uses: TobyAnscombe/github-actions/.github/workflows/ansible-ci.yml@main
     with:
-      requirements_file: "requirements.yml"
+      requirements_file: ""

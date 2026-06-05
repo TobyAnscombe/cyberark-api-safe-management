@@ -1,5 +1,8 @@
 ---
-# Example: authenticate to CyberArk and manage a safe with members.
+# Example: authenticate to CyberArk and manage a safe.
+#
+# The three Privilege Cloud built-in groups are added to every safe by default.
+# Assign your Entra groups to those CyberArk groups rather than to individual safes.
 #
 # Run:
 #   ansible-playbook examples/site.yml \
@@ -39,33 +42,31 @@
     cyberark_safe_number_of_days_retention: 30
     cyberark_safe_state: present
 
-    cyberark_safe_members:
-      - name: svc_myapp
-        member_type: User
-        search_in: Vault
-        permissions:
-          useAccounts: true
-          retrieveAccounts: true
-          listAccounts: true
-          viewSafeMembers: true
+    # cyberark_safe_standard_members and cyberark_safe_break_glass_* are not overridden
+    # here — the defaults unconditionally apply the following groups to every safe:
+    #   - Privilege Cloud Administrators    (administrator permissions)
+    #   - Privilege Cloud Auditors          (auditor permissions)
+    #   - Privilege Cloud Safe Managers     (safe manager permissions)
+    #   - Privilege Cloud Access Approvers  (approver permissions)
+    #   - CyberArk Break Glass Access       (full permissions, never purged)
+    #
+    # Add Entra groups to the corresponding CyberArk groups rather than to individual safes.
+    #
+    # For per-safe custom access (e.g. a service account), use cyberark_safe_members:
+    # cyberark_safe_members:
+    #   - name: svc_myapp
+    #     member_type: User
+    #     permissions:
+    #       useAccounts: true
+    #       retrieveAccounts: true
+    #       listAccounts: true
+    #       viewSafeMembers: true
 
-      - name: Domain Admins
-        member_type: Group
-        search_in: Directory
-        permissions:
-          useAccounts: true
-          retrieveAccounts: true
-          listAccounts: true
-          addAccounts: true
-          updateAccountContent: true
-          updateAccountProperties: true
-          manageSafe: true
-          manageSafeMembers: true
-          viewAuditLog: true
-          viewSafeMembers: true
-
-    # Remove vault members not listed above (excluding built-in accounts)
-    cyberark_safe_members_purge: false
+    # Break glass — emergency access that bypasses dual-control workflows.
+    # This member is never removed by purge logic.
+    # cyberark_safe_break_glass_enabled: true          # on by default
+    # cyberark_safe_break_glass_member: "CyberArk Break Glass Access"  # default
+    # cyberark_safe_break_glass_member_type: "Group"   # default
 
   roles:
     - cyberark_auth

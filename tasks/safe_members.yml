@@ -25,6 +25,55 @@
   run_once: true
   delegate_to: localhost
 
+- name: Set safe base URL for member operations
+  set_fact:
+    _cyberark_safe_url: >-
+      https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Standard members — always reconciled first, never purged
+# ---------------------------------------------------------------------------
+- name: Add missing standard members
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      memberName: "{{ item.name }}"
+      memberType: "{{ item.member_type | default('Group') }}"
+      permissions: "{{ item.permissions }}"
+    status_code: [201]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  loop: "{{ cyberark_safe_standard_members }}"
+  when: item.name not in _cyberark_current_member_names
+  run_once: true
+  delegate_to: localhost
+
+- name: Update existing standard members
+  uri:
+    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      permissions: "{{ item.permissions }}"
+    status_code: [200]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  loop: "{{ cyberark_safe_standard_members }}"
+  when: item.name in _cyberark_current_member_names
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Custom members
+# ---------------------------------------------------------------------------
 - name: Add new safe members
   uri:
     url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
@@ -35,7 +84,6 @@
     body:
       memberName: "{{ item.name }}"
       memberType: "{{ item.member_type | default('User') }}"
-      searchIn: "{{ item.search_in | default('Vault') }}"
       permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
     status_code: [201]
     timeout: 30
@@ -47,7 +95,7 @@
 
 - name: Update existing safe members
   uri:
-    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members/{{ item.name | urlencode }}"
+    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}"
     method: PUT
     headers:
       Authorization: "Bearer {{ cyberark_token }}"
@@ -64,7 +112,7 @@
 
 - name: Remove unmanaged safe members
   uri:
-    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members/{{ item | urlencode }}"
+    url: "{{ _cyberark_safe_url }}/Members/{{ item | urlencode }}"
     method: DELETE
     headers:
       Authorization: "Bearer {{ cyberark_token }}"
@@ -75,7 +123,56 @@
     {{
       _cyberark_current_member_names
       | difference(cyberark_safe_members | map(attribute='name') | list)
+      | difference(cyberark_safe_standard_members | map(attribute='name') | list)
+      | difference(
+          [cyberark_safe_break_glass_member]
+          if (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)
+          else []
+        )
     }}
   when: cyberark_safe_members_purge
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Break glass member — always reconciled last, never purged
+# ---------------------------------------------------------------------------
+- name: Add break glass member
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      memberName: "{{ cyberark_safe_break_glass_member }}"
+      memberType: "{{ cyberark_safe_break_glass_member_type }}"
+      permissions: "{{ cyberark_safe_break_glass_permissions }}"
+    status_code: [201]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  when:
+    - cyberark_safe_break_glass_enabled
+    - cyberark_safe_break_glass_member | trim | length > 0
+    - cyberark_safe_break_glass_member not in _cyberark_current_member_names
+  run_once: true
+  delegate_to: localhost
+
+- name: Update break glass member permissions
+  uri:
+    url: "{{ _cyberark_safe_url }}/Members/{{ cyberark_safe_break_glass_member | urlencode }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      permissions: "{{ cyberark_safe_break_glass_permissions }}"
+    status_code: [200]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  when:
+    - cyberark_safe_break_glass_enabled
+    - cyberark_safe_break_glass_member | trim | length > 0
+    - cyberark_safe_break_glass_member in _cyberark_current_member_names
   run_once: true
   delegate_to: localhost

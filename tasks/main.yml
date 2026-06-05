@@ -13,6 +13,17 @@
   run_once: true
   delegate_to: localhost
 
+- name: Validate break glass configuration
+  assert:
+    that:
+      - cyberark_safe_break_glass_member | trim | length > 0
+    fail_msg: "cyberark_safe_break_glass_member must be set when cyberark_safe_break_glass_enabled is true"
+  when:
+    - cyberark_safe_state == 'present'
+    - cyberark_safe_break_glass_enabled
+  run_once: true
+  delegate_to: localhost
+
 - name: Ensure safe is present
   include_tasks: safe_present.yml
   when: cyberark_safe_state == 'present'

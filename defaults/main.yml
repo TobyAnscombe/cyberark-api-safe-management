@@ -23,26 +23,31 @@ cyberark_safe_olac_enabled: false
 # ---------------------------------------------------------------------------
 # Member management
 # ---------------------------------------------------------------------------
-# List of member objects to reconcile against the safe.
-# Each item:
-#   name:        (required) vault username, group name, or role name
-#   member_type: User | Group | Role   (default: User)
-#   search_in:   Vault | Directory     (default: Vault)
-#   permissions: dict of camelCase CyberArk permission keys (see README)
-#
-# Example:
-#   cyberark_safe_members:
-#     - name: svc_jenkins
-#       member_type: User
-#       search_in: Vault
-#       permissions:
-#         useAccounts: true
-#         retrieveAccounts: true
-#         listAccounts: true
+# Standard members applied to every safe unconditionally.
+# These are never removed by the purge logic.
+# Add your Entra groups to the corresponding CyberArk groups rather than
+# adding them directly to individual safes.
+cyberark_safe_standard_members:
+  - name: "Privilege Cloud Administrators"
+    member_type: Group
+    permissions: "{{ cyberark_safe_permissions_administrator }}"
+  - name: "Privilege Cloud Auditors"
+    member_type: Group
+    permissions: "{{ cyberark_safe_permissions_auditor }}"
+  - name: "Privilege Cloud Safe Managers"
+    member_type: Group
+    permissions: "{{ cyberark_safe_permissions_safe_manager }}"
+  - name: "Privilege Cloud Access Approvers"
+    member_type: Group
+    permissions: "{{ cyberark_safe_permissions_approver }}"
+
+# Additional members to reconcile beyond the standard set above.
+# Use this for service accounts or other per-safe custom access.
 cyberark_safe_members: []
 
 # When true, members currently on the safe that are NOT in cyberark_safe_members
-# (and are not predefined/built-in vault users) will be removed.
+# and NOT in cyberark_safe_standard_members (and are not predefined/built-in vault
+# users or the break glass member) will be removed.
 cyberark_safe_members_purge: false
 
 # Default permissions applied when a member entry omits the permissions key.
@@ -68,5 +73,153 @@ cyberark_safe_member_default_permissions:
   createFolders: false
   deleteFolders: false
   moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# ---------------------------------------------------------------------------
+# Predefined permission sets
+# ---------------------------------------------------------------------------
+# Reference these in cyberark_safe_members entries:
+#   permissions: "{{ cyberark_safe_permissions_auditor }}"
+#
+# They match the four built-in Privilege Cloud roles.  Override any key by
+# merging with a dict update: permissions: "{{ cyberark_safe_permissions_auditor | combine({'viewAuditLog': false}) }}"
+
+# Access Approver — can approve Level 1 dual-control requests; read-only otherwise.
+cyberark_safe_permissions_approver:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: true
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: true
+  requestsAuthorizationLevel2: false
+
+# Privilege Cloud Auditor — read/audit access only; cannot retrieve or manage accounts.
+cyberark_safe_permissions_auditor:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: true
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# Privilege Cloud Safe Manager — full account and safe lifecycle management;
+# cannot use or retrieve account credentials.
+cyberark_safe_permissions_safe_manager:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: true
+  addAccounts: true
+  updateAccountContent: true
+  updateAccountProperties: true
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: true
+  deleteAccounts: true
+  unlockAccounts: true
+  manageSafe: true
+  manageSafeMembers: true
+  backupSafe: false
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: false
+  createFolders: true
+  deleteFolders: true
+  moveAccountsAndFolders: true
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# Privilege Cloud Administrator — full permissions including accessWithoutConfirmation.
+# Intended for regular admin users; use break glass for emergency-only accounts.
+cyberark_safe_permissions_administrator:
+  useAccounts: true
+  retrieveAccounts: true
+  listAccounts: true
+  addAccounts: true
+  updateAccountContent: true
+  updateAccountProperties: true
+  initiateCPMAccountManagementOperations: true
+  specifyNextAccountContent: true
+  renameAccounts: true
+  deleteAccounts: true
+  unlockAccounts: true
+  manageSafe: true
+  manageSafeMembers: true
+  backupSafe: true
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: true
+  createFolders: true
+  deleteFolders: true
+  moveAccountsAndFolders: true
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# ---------------------------------------------------------------------------
+# Break glass access
+# ---------------------------------------------------------------------------
+# When enabled, a dedicated emergency-access member is unconditionally added to
+# every safe managed by this role.  The member receives full permissions
+# including accessWithoutConfirmation so it can bypass dual-control workflows
+# in an emergency.  It is never removed by the purge logic.
+#
+# Set cyberark_safe_break_glass_member to a vault user, group, or role name.
+cyberark_safe_break_glass_enabled: true
+cyberark_safe_break_glass_member: "CyberArk Break Glass Access"
+cyberark_safe_break_glass_member_type: "Group"
+
+cyberark_safe_break_glass_permissions:
+  useAccounts: true
+  retrieveAccounts: true
+  listAccounts: true
+  addAccounts: true
+  updateAccountContent: true
+  updateAccountProperties: true
+  initiateCPMAccountManagementOperations: true
+  specifyNextAccountContent: true
+  renameAccounts: true
+  deleteAccounts: true
+  unlockAccounts: true
+  manageSafe: true
+  manageSafeMembers: true
+  backupSafe: true
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: true
+  createFolders: true
+  deleteFolders: true
+  moveAccountsAndFolders: true
   requestsAuthorizationLevel1: false
   requestsAuthorizationLevel2: false

@@ -1,5 +1,11 @@
 profile: basic
 
+# Stub external roles at lint time so the linter doesn't error on missing installs.
+# Run `ansible-galaxy install -r requirements.yml` to install them for real execution.
+mock_roles:
+  - cyberark_auth
+  - cyberark_safe_management
+
 skip_list:
   # ignore-errors is used intentionally on the safe-exists check (404 is expected)
   - ignore-errors

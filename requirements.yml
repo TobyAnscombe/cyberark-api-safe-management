@@ -1,0 +1,5 @@
+---
+roles:
+  - name: cyberark_auth
+    src: https://github.com/TobyAnscombe/cyberark-api-management
+    version: main

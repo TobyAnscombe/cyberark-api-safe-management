@@ -74,4 +74,8 @@
 
 - name: Manage safe members
   include_tasks: safe_members.yml
-  when: cyberark_safe_members | length > 0 or cyberark_safe_members_purge
+  when: >-
+    cyberark_safe_standard_members | length > 0
+    or cyberark_safe_members | length > 0
+    or cyberark_safe_members_purge
+    or (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)

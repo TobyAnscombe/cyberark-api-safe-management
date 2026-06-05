@@ -1,7 +1,9 @@
 profile: basic
 
-# Stub external roles at lint time so the linter doesn't error on missing installs.
-# Run `ansible-galaxy install -r requirements.yml` to install them for real execution.
+# Prevent ansible-lint from auto-running ansible-galaxy install when it finds
+# requirements.yml. mock_roles below stubs external roles for lint purposes.
+offline: true
+
 mock_roles:
   - cyberark_auth
   - cyberark_safe_management

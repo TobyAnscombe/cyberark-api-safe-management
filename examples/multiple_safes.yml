@@ -1,0 +1,84 @@
+---
+# Example: authenticate once and create/manage multiple safes in a loop.
+#
+# Define your safe list inline (as below) or in a separate vars file:
+#   ansible-playbook examples/multiple_safes.yml \
+#     -e @safes.yml \
+#     -e cyberark_identity_tenant=YOUR_TENANT_ID \
+#     -e cyberark_subdomain=YOUR_SUBDOMAIN \
+#     --vault-password-file ~/.vault_pass
+#
+# The cyberark_auth role acquires a token once. The safe management role is
+# then included in a loop, inheriting that token automatically via set_fact.
+#
+# requirements.yml (install before running):
+#   roles:
+#     - name: cyberark_auth
+#       src: https://github.com/TobyAnscombe/cyberark-api-management
+#       version: main
+#     - name: cyberark_safe_management
+#       src: https://github.com/TobyAnscombe/cyberark-api-safe-management
+#       version: main
+
+- name: Manage multiple CyberArk safes
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    cyberark_identity_tenant: "YOUR_TENANT_ID"
+    cyberark_subdomain: "YOUR_SUBDOMAIN"
+    # cyberark_client_id: !vault |
+    #   $ANSIBLE_VAULT;1.1;AES256
+    #   ...
+    # cyberark_client_secret: !vault |
+    #   $ANSIBLE_VAULT;1.1;AES256
+    #   ...
+
+    # Define all safes to manage. Each item maps directly to cyberark_safe_management
+    # variables. Only name and state are required; all other keys are optional.
+    safes:
+      - name: "app1-prod"
+        description: "Production secrets for app1"
+        number_of_days_retention: 90
+        state: present
+
+      - name: "app2-prod"
+        description: "Production secrets for app2"
+        number_of_days_retention: 90
+        state: present
+        # Per-safe custom members (in addition to the standard members applied to all safes)
+        members:
+          - name: "svc_app2"
+            member_type: User
+            permissions:
+              useAccounts: true
+              retrieveAccounts: true
+              listAccounts: true
+              viewSafeMembers: true
+
+      - name: "legacy-archive"
+        description: "Read-only archive — no active workloads"
+        number_of_days_retention: 365
+        state: present
+        members: []
+
+      # Uncomment to remove a safe:
+      # - name: "deprecated-safe"
+      #   state: absent
+
+  roles:
+    - cyberark_auth
+
+  tasks:
+    - name: Manage safe "{{ item.name }}"
+      include_role:
+        name: cyberark_safe_management
+      vars:
+        cyberark_safe_name: "{{ item.name }}"
+        cyberark_safe_description: "{{ item.description | default('') }}"
+        cyberark_safe_number_of_days_retention: "{{ item.number_of_days_retention | default(7) }}"
+        cyberark_safe_state: "{{ item.state | default('present') }}"
+        cyberark_safe_members: "{{ item.members | default([]) }}"
+      loop: "{{ safes }}"
+      loop_control:
+        label: "{{ item.name }}"

@@ -70,7 +70,7 @@
     - cyberark_auth
 
   tasks:
-    - name: Manage safe "{{ item.name }}"
+    - name: Manage safe "{{ item.name }}"  # noqa: var-naming[no-role-prefix]
       include_role:
         name: cyberark_safe_management
       vars:

@@ -1,0 +1,22 @@
+---
+- name: Validate required safe management variables
+  assert:
+    that:
+      - cyberark_token is defined
+      - cyberark_token | trim | length > 0
+      - cyberark_subdomain | trim | length > 0
+      - cyberark_safe_name | trim | length > 0
+      - cyberark_safe_state in ['present', 'absent']
+    fail_msg: >-
+      cyberark_token, cyberark_subdomain, and cyberark_safe_name must all be set.
+      cyberark_safe_state must be 'present' or 'absent'.
+  run_once: true
+  delegate_to: localhost
+
+- name: Ensure safe is present
+  include_tasks: safe_present.yml
+  when: cyberark_safe_state == 'present'
+
+- name: Ensure safe is absent
+  include_tasks: safe_absent.yml
+  when: cyberark_safe_state == 'absent'

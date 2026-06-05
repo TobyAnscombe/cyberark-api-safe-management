@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: TobyAnscombe
+  namespace: tobyanscombe
+  role_name: cyberark_safe_management
+  description: >-
+    Idempotently creates, updates, or deletes a CyberArk Privilege Cloud safe
+    and manages its members via the REST API
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: EL
+      versions: ["8", "9"]
+    - name: Ubuntu
+      versions: [bionic, focal, jammy, noble]
+    - name: Debian
+      versions: [bullseye, bookworm]
+
+# cyberark_token must be present on the play before this role runs.
+# The tobyanscombe.cyberark_auth role produces it — install and call that role
+# first, or supply the token by another means.
+dependencies: []

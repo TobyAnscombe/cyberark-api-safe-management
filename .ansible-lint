@@ -1,0 +1,5 @@
+profile: basic
+
+skip_list:
+  # ignore-errors is used intentionally on the safe-exists check (404 is expected)
+  - ignore-errors

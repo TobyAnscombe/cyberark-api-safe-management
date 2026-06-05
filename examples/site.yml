@@ -1,0 +1,77 @@
+---
+# Example: authenticate to CyberArk and manage a safe with members.
+#
+# Run:
+#   ansible-playbook examples/site.yml \
+#     -e cyberark_identity_tenant=YOUR_TENANT_ID \
+#     -e cyberark_subdomain=YOUR_SUBDOMAIN \
+#     --vault-password-file ~/.vault_pass
+#
+# Vault-encrypt your secrets first:
+#   ansible-vault encrypt_string 'my-client-id'     --name cyberark_client_id
+#   ansible-vault encrypt_string 'my-client-secret' --name cyberark_client_secret
+#
+# requirements.yml (install before running):
+#   roles:
+#     - name: cyberark_auth
+#       src: https://github.com/TobyAnscombe/cyberark-api-management
+#       version: main
+#     - name: cyberark_safe_management
+#       src: https://github.com/TobyAnscombe/cyberark-api-safe-management
+#       version: main
+
+- name: Manage CyberArk safe
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    cyberark_identity_tenant: "YOUR_TENANT_ID"
+    cyberark_subdomain: "YOUR_SUBDOMAIN"
+    # cyberark_client_id: !vault |
+    #   $ANSIBLE_VAULT;1.1;AES256
+    #   ...
+    # cyberark_client_secret: !vault |
+    #   $ANSIBLE_VAULT;1.1;AES256
+    #   ...
+
+    cyberark_safe_name: "my-application-safe"
+    cyberark_safe_description: "Secrets for my-application"
+    cyberark_safe_number_of_days_retention: 30
+    cyberark_safe_state: present
+
+    cyberark_safe_members:
+      - name: svc_myapp
+        member_type: User
+        search_in: Vault
+        permissions:
+          useAccounts: true
+          retrieveAccounts: true
+          listAccounts: true
+          viewSafeMembers: true
+
+      - name: Domain Admins
+        member_type: Group
+        search_in: Directory
+        permissions:
+          useAccounts: true
+          retrieveAccounts: true
+          listAccounts: true
+          addAccounts: true
+          updateAccountContent: true
+          updateAccountProperties: true
+          manageSafe: true
+          manageSafeMembers: true
+          viewAuditLog: true
+          viewSafeMembers: true
+
+    # Remove vault members not listed above (excluding built-in accounts)
+    cyberark_safe_members_purge: false
+
+  roles:
+    - cyberark_auth
+    - cyberark_safe_management
+
+  tasks:
+    - name: Show safe detail
+      debug:
+        var: cyberark_safe_detail

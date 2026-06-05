@@ -1,0 +1,26 @@
+---
+- name: Check if safe exists
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    status_code: [200, 404]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  register: _cyberark_safe_check
+  run_once: true
+  delegate_to: localhost
+
+- name: Delete safe
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    status_code: [204]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  when: _cyberark_safe_check.status == 200
+  run_once: true
+  delegate_to: localhost

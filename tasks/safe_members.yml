@@ -1,0 +1,81 @@
+---
+- name: Get current safe members
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    status_code: [200]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  register: _cyberark_safe_members_current
+  run_once: true
+  delegate_to: localhost
+
+# Exclude built-in vault accounts (Master, Batch, etc.) from reconciliation.
+- name: Set reconcilable current member names
+  set_fact:
+    _cyberark_current_member_names: >-
+      {{
+        _cyberark_safe_members_current.json.value
+        | selectattr('isPredefinedUser', 'equalto', false)
+        | map(attribute='memberName')
+        | list
+      }}
+  run_once: true
+  delegate_to: localhost
+
+- name: Add new safe members
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      memberName: "{{ item.name }}"
+      memberType: "{{ item.member_type | default('User') }}"
+      searchIn: "{{ item.search_in | default('Vault') }}"
+      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
+    status_code: [201]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  loop: "{{ cyberark_safe_members }}"
+  when: item.name not in _cyberark_current_member_names
+  run_once: true
+  delegate_to: localhost
+
+- name: Update existing safe members
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members/{{ item.name | urlencode }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
+    status_code: [200]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  loop: "{{ cyberark_safe_members }}"
+  when: item.name in _cyberark_current_member_names
+  run_once: true
+  delegate_to: localhost
+
+- name: Remove unmanaged safe members
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members/{{ item | urlencode }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    status_code: [204]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  loop: >-
+    {{
+      _cyberark_current_member_names
+      | difference(cyberark_safe_members | map(attribute='name') | list)
+    }}
+  when: cyberark_safe_members_purge
+  run_once: true
+  delegate_to: localhost

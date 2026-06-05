@@ -1,0 +1,72 @@
+---
+# Required — set in playbook vars; cyberark_token is produced by the cyberark_auth role
+cyberark_subdomain: ""
+
+cyberark_validate_certs: true
+
+# ---------------------------------------------------------------------------
+# Safe identity and state
+# ---------------------------------------------------------------------------
+cyberark_safe_name: ""
+cyberark_safe_state: present   # present | absent
+
+# ---------------------------------------------------------------------------
+# Safe properties (used on create and update)
+# ---------------------------------------------------------------------------
+cyberark_safe_description: ""
+cyberark_safe_location: "\\"
+cyberark_safe_number_of_days_retention: 7
+cyberark_safe_number_of_versions_retention: ~   # null — mutual exclusive with days retention
+cyberark_safe_auto_purge_enabled: false
+cyberark_safe_olac_enabled: false
+
+# ---------------------------------------------------------------------------
+# Member management
+# ---------------------------------------------------------------------------
+# List of member objects to reconcile against the safe.
+# Each item:
+#   name:        (required) vault username, group name, or role name
+#   member_type: User | Group | Role   (default: User)
+#   search_in:   Vault | Directory     (default: Vault)
+#   permissions: dict of camelCase CyberArk permission keys (see README)
+#
+# Example:
+#   cyberark_safe_members:
+#     - name: svc_jenkins
+#       member_type: User
+#       search_in: Vault
+#       permissions:
+#         useAccounts: true
+#         retrieveAccounts: true
+#         listAccounts: true
+cyberark_safe_members: []
+
+# When true, members currently on the safe that are NOT in cyberark_safe_members
+# (and are not predefined/built-in vault users) will be removed.
+cyberark_safe_members_purge: false
+
+# Default permissions applied when a member entry omits the permissions key.
+# Override this var to change the baseline across all members in one place.
+cyberark_safe_member_default_permissions:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: false
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: false
+  viewSafeMembers: false
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false

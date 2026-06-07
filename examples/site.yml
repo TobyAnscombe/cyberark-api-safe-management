@@ -16,7 +16,7 @@
 #
 # requirements.yml (install before running):
 #   roles:
-#     - name: cyberark_auth
+#     - name: cyberark_api_authentication
 #       src: https://github.com/TobyAnscombe/cyberark-api-management
 #       version: main
 #     - name: cyberark_safe_management
@@ -69,7 +69,7 @@
     # cyberark_safe_break_glass_member_type: "Group"   # default
 
   roles:
-    - cyberark_auth
+    - cyberark_api_authentication
     - cyberark_safe_management
 
   tasks:

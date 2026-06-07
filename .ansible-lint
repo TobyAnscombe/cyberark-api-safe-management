@@ -5,7 +5,7 @@ profile: basic
 offline: true
 
 mock_roles:
-  - cyberark_auth
+  - cyberark_api_authentication
   - cyberark_safe_management
 
 skip_list:

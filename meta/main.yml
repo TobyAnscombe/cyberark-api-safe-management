@@ -17,8 +17,8 @@ galaxy_info:
       versions: [bullseye, bookworm]
 
 # cyberark_token must be present on the play before this role runs.
-# Supply it via cyberark_auth (listed below) or by another means.
+# Supply it via cyberark_api_authentication (listed below) or by another means.
 dependencies:
   - src: https://github.com/TobyAnscombe/cyberark-api-management
-    name: cyberark_auth
+    name: cyberark_api_authentication
     version: v1.0.1

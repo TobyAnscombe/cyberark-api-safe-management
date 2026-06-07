@@ -8,12 +8,12 @@
 #     -e cyberark_subdomain=YOUR_SUBDOMAIN \
 #     --vault-password-file ~/.vault_pass
 #
-# The cyberark_auth role acquires a token once. The safe management role is
+# The cyberark_api_authentication role acquires a token once. The safe management role is
 # then included in a loop, inheriting that token automatically via set_fact.
 #
 # requirements.yml (install before running):
 #   roles:
-#     - name: cyberark_auth
+#     - name: cyberark_api_authentication
 #       src: https://github.com/TobyAnscombe/cyberark-api-management
 #       version: main
 #     - name: cyberark_safe_management
@@ -67,7 +67,7 @@
       #   state: absent
 
   roles:
-    - cyberark_auth
+    - cyberark_api_authentication
 
   tasks:
     - name: Manage safe "{{ item.name }}"  # noqa: var-naming[no-role-prefix]

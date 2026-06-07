@@ -2,7 +2,7 @@
 
 Ansible role that idempotently creates, updates, or deletes a CyberArk Privilege Cloud safe and reconciles its member permissions via the REST API.
 
-Designed to run after the [`tobyanscombe.cyberark_auth`](https://github.com/TobyAnscombe/cyberark-api-management) role, which produces the `cyberark_token` bearer token this role consumes.
+Designed to run after the [`tobyanscombe.cyberark_api_authentication`](https://github.com/TobyAnscombe/cyberark-api-management) role, which produces the `cyberark_token` bearer token this role consumes.
 
 ## How it works
 
@@ -20,7 +20,7 @@ All API calls run `delegate_to: localhost` / `run_once: true` — safe managemen
 ## Requirements
 
 - Ansible 2.9+
-- `cyberark_token` present on the play — produced by [`tobyanscombe.cyberark_auth`](https://github.com/TobyAnscombe/cyberark-api-management) or supplied by any other means
+- `cyberark_token` present on the play — produced by [`tobyanscombe.cyberark_api_authentication`](https://github.com/TobyAnscombe/cyberark-api-management) or supplied by any other means
 - A CyberArk Privilege Cloud tenant
 
 ## Install
@@ -28,7 +28,7 @@ All API calls run `delegate_to: localhost` / `run_once: true` — safe managemen
 ```yaml
 # requirements.yml
 roles:
-  - name: cyberark_auth
+  - name: cyberark_api_authentication
     src: https://github.com/TobyAnscombe/cyberark-api-management
     version: main
   - name: cyberark_safe_management
@@ -193,7 +193,7 @@ The default permission set is identical to `cyberark_safe_permissions_administra
     # cyberark_client_id and cyberark_client_secret from vault
 
   roles:
-    - cyberark_auth
+    - cyberark_api_authentication
     - cyberark_safe_management
 ```
 

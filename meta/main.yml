@@ -21,4 +21,4 @@ galaxy_info:
 dependencies:
   - src: https://github.com/TobyAnscombe/cyberark-api-management
     name: cyberark_auth
-    version: main
+    version: v1.0.1

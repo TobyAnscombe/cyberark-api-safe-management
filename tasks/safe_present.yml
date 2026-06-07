@@ -19,14 +19,22 @@
     headers:
       Authorization: "Bearer {{ cyberark_token }}"
     body_format: json
-    body:
-      safeName: "{{ cyberark_safe_name }}"
-      description: "{{ cyberark_safe_description }}"
-      location: "{{ cyberark_safe_location }}"
-      numberOfDaysRetention: "{{ cyberark_safe_number_of_days_retention }}"
-      numberOfVersionsRetention: "{{ cyberark_safe_number_of_versions_retention }}"
-      autoPurgeEnabled: "{{ cyberark_safe_auto_purge_enabled }}"
-      olacEnabled: "{{ cyberark_safe_olac_enabled }}"
+    body: >-
+      {{
+        {
+          'safeName': cyberark_safe_name,
+          'description': cyberark_safe_description,
+          'location': cyberark_safe_location,
+          'numberOfDaysRetention': cyberark_safe_number_of_days_retention,
+          'numberOfVersionsRetention': cyberark_safe_number_of_versions_retention,
+          'autoPurgeEnabled': cyberark_safe_auto_purge_enabled,
+          'olacEnabled': cyberark_safe_olac_enabled
+        } | combine(
+          {'managingCPM': cyberark_safe_managing_cpm}
+          if cyberark_safe_managing_cpm | trim | length > 0
+          else {}
+        )
+      }}
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
@@ -42,14 +50,22 @@
     headers:
       Authorization: "Bearer {{ cyberark_token }}"
     body_format: json
-    body:
-      safeName: "{{ cyberark_safe_name }}"
-      description: "{{ cyberark_safe_description }}"
-      location: "{{ cyberark_safe_location }}"
-      numberOfDaysRetention: "{{ cyberark_safe_number_of_days_retention }}"
-      numberOfVersionsRetention: "{{ cyberark_safe_number_of_versions_retention }}"
-      autoPurgeEnabled: "{{ cyberark_safe_auto_purge_enabled }}"
-      olacEnabled: "{{ cyberark_safe_olac_enabled }}"
+    body: >-
+      {{
+        {
+          'safeName': cyberark_safe_name,
+          'description': cyberark_safe_description,
+          'location': cyberark_safe_location,
+          'numberOfDaysRetention': cyberark_safe_number_of_days_retention,
+          'numberOfVersionsRetention': cyberark_safe_number_of_versions_retention,
+          'autoPurgeEnabled': cyberark_safe_auto_purge_enabled,
+          'olacEnabled': cyberark_safe_olac_enabled
+        } | combine(
+          {'managingCPM': cyberark_safe_managing_cpm}
+          if cyberark_safe_managing_cpm | trim | length > 0
+          else {}
+        )
+      }}
     status_code: [200]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"

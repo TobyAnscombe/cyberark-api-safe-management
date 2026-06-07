@@ -15,6 +15,7 @@ cyberark_safe_state: present   # present | absent
 # ---------------------------------------------------------------------------
 cyberark_safe_description: ""
 cyberark_safe_location: "\\"
+cyberark_safe_managing_cpm: ""   # CPM name e.g. "PasswordManager" — omitted from API body if empty
 cyberark_safe_number_of_days_retention: 7
 cyberark_safe_number_of_versions_retention: ~   # null — mutual exclusive with days retention
 cyberark_safe_auto_purge_enabled: false

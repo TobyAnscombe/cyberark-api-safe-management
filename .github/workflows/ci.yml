@@ -15,5 +15,6 @@ jobs:
   ansible-lint:
     uses: TobyAnscombe/github-actions/.github/workflows/ansible-ci.yml@main
     with:
+      ansible_lint_version: "26.1.0"
       requirements_file: ""
 

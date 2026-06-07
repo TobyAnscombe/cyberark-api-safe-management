@@ -17,4 +17,3 @@ jobs:
     with:
       ansible_lint_version: "26.1.0"
       requirements_file: ""
-

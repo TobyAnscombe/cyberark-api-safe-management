@@ -174,6 +174,8 @@
             if (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)
             else []
           )
+        | difference(cyberark_safe_purge_system_members | default([]))
+        | difference(cyberark_safe_purge_exclude_members | default([]))
       }}
   when:
     - cyberark_safe_members_purge

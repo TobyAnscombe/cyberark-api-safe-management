@@ -51,6 +51,20 @@ cyberark_safe_members: []
 # users or the break glass member) will be removed.
 cyberark_safe_members_purge: false
 
+# CyberArk system-managed members that are always excluded from purge.
+# PSMAppUsers is added automatically by Privilege Cloud for PSM sessions.
+# Do not remove entries from this list — extend cyberark_safe_purge_exclude_members instead.
+cyberark_safe_purge_system_members:
+  - "PSMAppUsers"
+
+# Additional members to exclude from purge — use for environment-specific accounts
+# such as the API service account that creates safes, or the CPM account name.
+# Example (in settings.yml):
+#   cyberark_safe_purge_exclude_members:
+#     - "api_user@cyberark.cloud.12345"
+#     - "CPM-PasswordManager"
+cyberark_safe_purge_exclude_members: []
+
 # When false (default), existing members are left untouched — only missing members are added.
 # Set true to also push the declared permissions onto members that already exist.
 cyberark_safe_members_reconcile_permissions: false

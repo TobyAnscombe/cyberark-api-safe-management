@@ -144,7 +144,7 @@ Four variables ship with permissions matching CyberArk's built-in Privilege Clou
 | `manageSafe` | | | ✓ | ✓ |
 | `manageSafeMembers` | | | ✓ | ✓ |
 | `backupSafe` | | | | ✓ |
-| `viewAuditLog` | ✓ | ✓ | ✓ | ✓ |
+| `viewAuditLog` | | ✓ | ✓ | ✓ |
 | `viewSafeMembers` | ✓ | ✓ | ✓ | ✓ |
 | `accessWithoutConfirmation` | | | | ✓ |
 | `createFolders` | | | ✓ | ✓ |

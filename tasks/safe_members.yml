@@ -12,13 +12,15 @@
   run_once: true
   delegate_to: localhost
 
-# Exclude built-in vault accounts (Master, Batch, etc.) from reconciliation.
+# Exclude built-in vault accounts (Master, Batch, etc.) and read-only memberships
+# (e.g. safe creator, Identity-managed direct assignments) from reconciliation.
 - name: Set reconcilable current member names
   set_fact:
     _cyberark_current_member_names: >-
       {{
         _cyberark_safe_members_current.json.value
         | selectattr('isPredefinedUser', 'equalto', false)
+        | rejectattr('isReadOnly', 'equalto', true)
         | map(attribute='memberName')
         | list
       }}

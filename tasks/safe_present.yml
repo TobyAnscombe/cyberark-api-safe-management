@@ -159,13 +159,28 @@
   run_once: true
   delegate_to: localhost
 
+- name: Build safe change detail
+  set_fact:
+    _cyberark_safe_change_detail: >-
+      {%- set ns = namespace(parts=[]) -%}
+      {%- for field, new_val in _cyberark_safe_diff.items() -%}
+        {%- set cur_val = _cyberark_safe_check.json[field] | default('') | string -%}
+        {%- set ns.parts = ns.parts + [field ~ ': "' ~ cur_val ~ '" → "' ~ new_val | string ~ '"'] -%}
+      {%- endfor -%}
+      {{ ns.parts | join(' | ') }}
+  when:
+    - _cyberark_safe_check.status == 200
+    - _cyberark_safe_diff | length > 0
+  run_once: true
+  delegate_to: localhost
+
 - name: Accumulate safe diff in provision summary
   set_fact:
     _cyberark_provision_summary: >-
       {{
         _cyberark_provision_summary | default([]) +
         [{'safe': cyberark_safe_name, 'type': 'safe', 'item': cyberark_safe_name,
-          'action': 'update', 'detail': _cyberark_safe_diff | list | join(', ')}]
+          'action': 'update', 'detail': _cyberark_safe_change_detail | default('')}]
       }}
   when:
     - _cyberark_safe_check.status == 200

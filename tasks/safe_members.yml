@@ -72,6 +72,7 @@
   loop: "{{ cyberark_safe_standard_members }}"
   when:
     - item.name in _cyberark_current_member_names
+    - cyberark_safe_members_reconcile_permissions | default(false)
     - cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
@@ -91,6 +92,7 @@
   loop: "{{ cyberark_safe_standard_members }}"
   when:
     - item.name in _cyberark_current_member_names
+    - cyberark_safe_members_reconcile_permissions | default(false)
     - not cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
@@ -135,6 +137,7 @@
   loop: "{{ cyberark_safe_members }}"
   when:
     - item.name in _cyberark_current_member_names
+    - cyberark_safe_members_reconcile_permissions | default(false)
     - cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
@@ -154,6 +157,7 @@
   loop: "{{ cyberark_safe_members }}"
   when:
     - item.name in _cyberark_current_member_names
+    - cyberark_safe_members_reconcile_permissions | default(false)
     - not cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost

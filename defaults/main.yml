@@ -51,6 +51,10 @@ cyberark_safe_members: []
 # users or the break glass member) will be removed.
 cyberark_safe_members_purge: false
 
+# When false (default), existing members are left untouched — only missing members are added.
+# Set true to also push the declared permissions onto members that already exist.
+cyberark_safe_members_reconcile_permissions: false
+
 # Default permissions applied when a member entry omits the permissions key.
 # Override this var to change the baseline across all members in one place.
 cyberark_safe_member_default_permissions:

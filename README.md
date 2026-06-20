@@ -64,7 +64,7 @@ Applied on both create and update.
 |---|---|---|
 | `cyberark_safe_description` | `""` | Free-text description |
 | `cyberark_safe_location` | `"\\"` | Vault folder location |
-| `cyberark_safe_number_of_days_retention` | `7` | Days to retain object versions (mutually exclusive with versions retention) |
+| `cyberark_safe_number_of_days_retention` | `null` | Days to retain object versions (mutually exclusive with versions retention) |
 | `cyberark_safe_number_of_versions_retention` | `null` | Number of versions to retain |
 | `cyberark_safe_auto_purge_enabled` | `false` | Auto-purge expired accounts |
 | `cyberark_safe_olac_enabled` | `false` | Object-level access control |
@@ -84,6 +84,9 @@ The role separates members into three tiers, applied in order and with different
 | `cyberark_safe_standard_members` | four built-in groups (see below) | Always applied to every safe; never removed by purge |
 | `cyberark_safe_members` | `[]` | Per-safe custom members (e.g. service accounts) |
 | `cyberark_safe_members_purge` | `false` | Remove members not in `cyberark_safe_members` (standard and break glass members always excluded) |
+| `cyberark_safe_members_reconcile_permissions` | `false` | When `false`, only add missing members; when `true`, also push declared permissions onto existing members |
+| `cyberark_safe_purge_system_members` | `["PSMAppUsers"]` | CyberArk system-managed members always excluded from purge — extend, don't override |
+| `cyberark_safe_purge_exclude_members` | `[]` | Environment-specific members excluded from purge (e.g. API service account, CPM account name) |
 | `cyberark_safe_member_default_permissions` | all-false | Fallback permissions when a `cyberark_safe_members` entry omits the `permissions` key |
 
 `cyberark_safe_standard_members` defaults to the four Privilege Cloud groups. Add your Entra groups to the corresponding CyberArk group; permissions flow through automatically without per-safe configuration:
@@ -163,7 +166,7 @@ A dedicated emergency-access member that is unconditionally added to every safe 
 | Variable | Default | Description |
 |---|---|---|
 | `cyberark_safe_break_glass_enabled` | `true` | Enable break glass member management |
-| `cyberark_safe_break_glass_member` | `"CyberArk Break Glass Access"` | CyberArk group name to grant break glass access |
+| `cyberark_safe_break_glass_member` | `"Privilege Cloud Break Glass Access"` | CyberArk Identity role name to grant break glass access — must be an Identity API role, not a vault-native group |
 | `cyberark_safe_break_glass_member_type` | `Group` | `User`, `Group`, or `Role` |
 | `cyberark_safe_break_glass_permissions` | all-true (see defaults) | Override to restrict the break glass permission set |
 
@@ -214,7 +217,7 @@ The default permission set is identical to `cyberark_safe_permissions_administra
 
 ### With break glass
 
-Break glass is enabled by default using the `CyberArk Break Glass Access` group. No configuration is needed unless you want to disable it or change the group name:
+Break glass is enabled by default using the `Privilege Cloud Break Glass Access` Identity role. **Important:** the break glass member must be a role created via the CyberArk Identity API (`/Roles/StoreRole`) — vault-native groups created directly in Privilege Cloud cannot be added to safes via the REST API. No configuration is needed unless you want to disable it or change the role name:
 
 ```yaml
   vars:
@@ -245,9 +248,12 @@ ansible-playbook site.yml --vault-password-file ~/.vault_pass
 
 By default the role is additive — existing members not listed in `cyberark_safe_members` are left untouched. Set `cyberark_safe_members_purge: true` to enforce the declared list as the complete desired state.
 
-Two categories of member are always excluded from purge:
+Four categories of member are always excluded from purge:
 - **Built-in vault accounts** (`isPredefinedUser: true`, e.g. `Master`, `Batch`)
+- **Standard members** — the four built-in Privilege Cloud groups in `cyberark_safe_standard_members`
 - **Break glass member** — excluded regardless of whether `cyberark_safe_break_glass_enabled` is true
+- **System members** — `cyberark_safe_purge_system_members` (defaults to `PSMAppUsers`, which Privilege Cloud adds automatically for PSM sessions)
+- **Explicit exclusions** — `cyberark_safe_purge_exclude_members` for environment-specific accounts such as the API service account or CPM account name
 
 > **Note:** The members endpoint is fetched as a single page. Safes with more than ~1000 members may return an incomplete list. This is not a common scenario in practice.
 

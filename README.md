@@ -248,8 +248,9 @@ ansible-playbook site.yml --vault-password-file ~/.vault_pass
 
 By default the role is additive — existing members not listed in `cyberark_safe_members` are left untouched. Set `cyberark_safe_members_purge: true` to enforce the declared list as the complete desired state.
 
-Four categories of member are always excluded from purge:
+Five categories of member are always excluded from purge:
 - **Built-in vault accounts** (`isPredefinedUser: true`, e.g. `Master`, `Batch`)
+- **Read-only memberships** (`isReadOnly: true`) — safe creator or Identity-managed direct assignments that cannot be deleted or updated via the Members API
 - **Standard members** — the four built-in Privilege Cloud groups in `cyberark_safe_standard_members`
 - **Break glass member** — excluded regardless of whether `cyberark_safe_break_glass_enabled` is true
 - **System members** — `cyberark_safe_purge_system_members` (defaults to `PSMAppUsers`, which Privilege Cloud adds automatically for PSM sessions)

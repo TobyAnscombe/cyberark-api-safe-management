@@ -218,7 +218,7 @@ cyberark_safe_permissions_administrator:
 cyberark_dry_run: true
 
 cyberark_safe_break_glass_enabled: true
-cyberark_safe_break_glass_member: "CyberArk Break Glass Access"
+cyberark_safe_break_glass_member: "Privilege Cloud Break Glass Access"
 cyberark_safe_break_glass_member_type: "Group"
 
 cyberark_safe_break_glass_permissions:

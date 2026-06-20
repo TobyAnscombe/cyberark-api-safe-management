@@ -16,7 +16,7 @@ cyberark_safe_state: present   # present | absent
 cyberark_safe_description: ""
 cyberark_safe_location: "\\"
 cyberark_safe_managing_cpm: ""   # CPM name e.g. "PasswordManager" — omitted from API body if empty
-cyberark_safe_number_of_days_retention: 7
+cyberark_safe_number_of_days_retention: ~   # null — mutual exclusive with versions retention
 cyberark_safe_number_of_versions_retention: ~   # null — mutual exclusive with days retention
 cyberark_safe_auto_purge_enabled: false
 cyberark_safe_olac_enabled: false
@@ -197,6 +197,8 @@ cyberark_safe_permissions_administrator:
 # in an emergency.  It is never removed by the purge logic.
 #
 # Set cyberark_safe_break_glass_member to a vault user, group, or role name.
+cyberark_dry_run: true
+
 cyberark_safe_break_glass_enabled: true
 cyberark_safe_break_glass_member: "CyberArk Break Glass Access"
 cyberark_safe_break_glass_member_type: "Group"

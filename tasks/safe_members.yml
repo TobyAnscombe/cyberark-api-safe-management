@@ -35,6 +35,16 @@
 # ---------------------------------------------------------------------------
 # Standard members — always reconciled first, never purged
 # ---------------------------------------------------------------------------
+- name: "[DRY RUN] Would add standard member {{ item.name }}"
+  ansible.builtin.debug:
+    msg: "POST /Members — {{ item.name }} not present and would be added"
+  loop: "{{ cyberark_safe_standard_members }}"
+  when:
+    - item.name not in _cyberark_current_member_names
+    - cyberark_dry_run | default(true)
+  run_once: true
+  delegate_to: localhost
+
 - name: Add missing standard members
   uri:
     url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
@@ -50,7 +60,19 @@
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
   loop: "{{ cyberark_safe_standard_members }}"
-  when: item.name not in _cyberark_current_member_names
+  when:
+    - item.name not in _cyberark_current_member_names
+    - not cyberark_dry_run | default(true)
+  run_once: true
+  delegate_to: localhost
+
+- name: "[DRY RUN] Would update standard member {{ item.name }}"
+  ansible.builtin.debug:
+    msg: "PUT /Members/{{ item.name }} — permissions would be reconciled"
+  loop: "{{ cyberark_safe_standard_members }}"
+  when:
+    - item.name in _cyberark_current_member_names
+    - cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
 
@@ -67,13 +89,25 @@
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
   loop: "{{ cyberark_safe_standard_members }}"
-  when: item.name in _cyberark_current_member_names
+  when:
+    - item.name in _cyberark_current_member_names
+    - not cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
 
 # ---------------------------------------------------------------------------
 # Custom members
 # ---------------------------------------------------------------------------
+- name: "[DRY RUN] Would add member {{ item.name }}"
+  ansible.builtin.debug:
+    msg: "POST /Members — {{ item.name }} not present and would be added"
+  loop: "{{ cyberark_safe_members }}"
+  when:
+    - item.name not in _cyberark_current_member_names
+    - cyberark_dry_run | default(true)
+  run_once: true
+  delegate_to: localhost
+
 - name: Add new safe members
   uri:
     url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
@@ -89,7 +123,19 @@
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
   loop: "{{ cyberark_safe_members }}"
-  when: item.name not in _cyberark_current_member_names
+  when:
+    - item.name not in _cyberark_current_member_names
+    - not cyberark_dry_run | default(true)
+  run_once: true
+  delegate_to: localhost
+
+- name: "[DRY RUN] Would update member {{ item.name }}"
+  ansible.builtin.debug:
+    msg: "PUT /Members/{{ item.name }} — permissions would be reconciled"
+  loop: "{{ cyberark_safe_members }}"
+  when:
+    - item.name in _cyberark_current_member_names
+    - cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
 
@@ -106,7 +152,28 @@
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
   loop: "{{ cyberark_safe_members }}"
-  when: item.name in _cyberark_current_member_names
+  when:
+    - item.name in _cyberark_current_member_names
+    - not cyberark_dry_run | default(true)
+  run_once: true
+  delegate_to: localhost
+
+- name: "[DRY RUN] Would remove unmanaged members"
+  ansible.builtin.debug:
+    msg: >-
+      DELETE /Members — would remove: {{
+        _cyberark_current_member_names
+        | difference(cyberark_safe_members | map(attribute='name') | list)
+        | difference(cyberark_safe_standard_members | map(attribute='name') | list)
+        | difference(
+            [cyberark_safe_break_glass_member]
+            if (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)
+            else []
+          )
+      }}
+  when:
+    - cyberark_safe_members_purge
+    - cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
 
@@ -130,13 +197,26 @@
           else []
         )
     }}
-  when: cyberark_safe_members_purge
+  when:
+    - cyberark_safe_members_purge
+    - not cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
 
 # ---------------------------------------------------------------------------
 # Break glass member — always reconciled last, never purged
 # ---------------------------------------------------------------------------
+- name: "[DRY RUN] Would add break glass member {{ cyberark_safe_break_glass_member }}"
+  ansible.builtin.debug:
+    msg: "POST /Members — {{ cyberark_safe_break_glass_member }} not present and would be added"
+  when:
+    - cyberark_safe_break_glass_enabled
+    - cyberark_safe_break_glass_member | trim | length > 0
+    - cyberark_safe_break_glass_member not in _cyberark_current_member_names
+    - cyberark_dry_run | default(true)
+  run_once: true
+  delegate_to: localhost
+
 - name: Add break glass member
   uri:
     url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
@@ -155,6 +235,18 @@
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0
     - cyberark_safe_break_glass_member not in _cyberark_current_member_names
+    - not cyberark_dry_run | default(true)
+  run_once: true
+  delegate_to: localhost
+
+- name: "[DRY RUN] Would update break glass member {{ cyberark_safe_break_glass_member }}"
+  ansible.builtin.debug:
+    msg: "PUT /Members/{{ cyberark_safe_break_glass_member }} — permissions would be reconciled"
+  when:
+    - cyberark_safe_break_glass_enabled
+    - cyberark_safe_break_glass_member | trim | length > 0
+    - cyberark_safe_break_glass_member in _cyberark_current_member_names
+    - cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost
 
@@ -174,5 +266,6 @@
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0
     - cyberark_safe_break_glass_member in _cyberark_current_member_names
+    - not cyberark_dry_run | default(true)
   run_once: true
   delegate_to: localhost

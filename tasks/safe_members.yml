@@ -41,7 +41,7 @@
   loop: "{{ cyberark_safe_standard_members }}"
   when:
     - item.name not in _cyberark_current_member_names
-    - cyberark_dry_run | default(true)
+    - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -62,7 +62,7 @@
   loop: "{{ cyberark_safe_standard_members }}"
   when:
     - item.name not in _cyberark_current_member_names
-    - not cyberark_dry_run | default(true)
+    - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -73,7 +73,7 @@
   when:
     - item.name in _cyberark_current_member_names
     - cyberark_safe_members_reconcile_permissions | default(false)
-    - cyberark_dry_run | default(true)
+    - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -93,7 +93,7 @@
   when:
     - item.name in _cyberark_current_member_names
     - cyberark_safe_members_reconcile_permissions | default(false)
-    - not cyberark_dry_run | default(true)
+    - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -106,7 +106,7 @@
   loop: "{{ cyberark_safe_members }}"
   when:
     - item.name not in _cyberark_current_member_names
-    - cyberark_dry_run | default(true)
+    - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -127,7 +127,7 @@
   loop: "{{ cyberark_safe_members }}"
   when:
     - item.name not in _cyberark_current_member_names
-    - not cyberark_dry_run | default(true)
+    - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -138,7 +138,7 @@
   when:
     - item.name in _cyberark_current_member_names
     - cyberark_safe_members_reconcile_permissions | default(false)
-    - cyberark_dry_run | default(true)
+    - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -158,7 +158,7 @@
   when:
     - item.name in _cyberark_current_member_names
     - cyberark_safe_members_reconcile_permissions | default(false)
-    - not cyberark_dry_run | default(true)
+    - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -179,7 +179,7 @@
       }}
   when:
     - cyberark_safe_members_purge
-    - cyberark_dry_run | default(true)
+    - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -205,7 +205,7 @@
     }}
   when:
     - cyberark_safe_members_purge
-    - not cyberark_dry_run | default(true)
+    - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -219,7 +219,7 @@
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0
     - cyberark_safe_break_glass_member not in _cyberark_current_member_names
-    - cyberark_dry_run | default(true)
+    - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -241,7 +241,7 @@
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0
     - cyberark_safe_break_glass_member not in _cyberark_current_member_names
-    - not cyberark_dry_run | default(true)
+    - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -252,7 +252,7 @@
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0
     - cyberark_safe_break_glass_member in _cyberark_current_member_names
-    - cyberark_dry_run | default(true)
+    - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -272,6 +272,6 @@
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0
     - cyberark_safe_break_glass_member in _cyberark_current_member_names
-    - not cyberark_dry_run | default(true)
+    - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost

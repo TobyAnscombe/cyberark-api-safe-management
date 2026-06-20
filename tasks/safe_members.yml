@@ -317,7 +317,18 @@
         {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': m.name, 'action': 'add', 'detail': ''}] -%}
       {%- endfor -%}
       {%- for m in _cyberark_members_to_update_std + _cyberark_members_to_update_custom -%}
-        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': m.name, 'action': 'perm-update', 'detail': ''}] -%}
+        {%- set cur = (_cyberark_safe_members_current.json.value
+            | selectattr('memberName', 'equalto', m.name)
+            | list | first | default({})).permissions | default({}) -%}
+        {%- set ns2 = namespace(changes=[]) -%}
+        {%- for key, val in m.permissions.items() -%}
+          {%- if cur.get(key) != val -%}
+            {%- set ns2.changes = ns2.changes + [key ~ ': ' ~ cur.get(key) | string ~ ' → ' ~ val | string] -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- set _detail = ns2.changes | join(' | ') -%}
+        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member',
+            'item': m.name, 'action': 'perm-update', 'detail': _detail}] -%}
       {%- endfor -%}
       {%- for name in (_cyberark_members_to_purge if cyberark_safe_members_purge else []) -%}
         {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': name, 'action': 'remove', 'detail': ''}] -%}

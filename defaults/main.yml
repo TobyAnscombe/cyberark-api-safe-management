@@ -8,16 +8,16 @@ cyberark_validate_certs: true
 # Safe identity and state
 # ---------------------------------------------------------------------------
 cyberark_safe_name: ""
-cyberark_safe_state: present   # present | absent
+cyberark_safe_state: present # present | absent
 
 # ---------------------------------------------------------------------------
 # Safe properties (used on create and update)
 # ---------------------------------------------------------------------------
 cyberark_safe_description: ""
 cyberark_safe_location: "\\"
-cyberark_safe_managing_cpm: ""   # CPM name e.g. "PasswordManager" — omitted from API body if empty
-cyberark_safe_number_of_days_retention: ~   # null — mutual exclusive with versions retention
-cyberark_safe_number_of_versions_retention: ~   # null — mutual exclusive with days retention
+cyberark_safe_managing_cpm: "" # CPM name e.g. "PasswordManager" — omitted from API body if empty
+cyberark_safe_number_of_days_retention: # null — mutual exclusive with versions retention
+cyberark_safe_number_of_versions_retention: # null — mutual exclusive with days retention
 cyberark_safe_auto_purge_enabled: false
 cyberark_safe_olac_enabled: false
 
@@ -45,7 +45,6 @@ cyberark_safe_standard_members:
 # Additional members to reconcile beyond the standard set above.
 # Use this for service accounts or other per-safe custom access.
 cyberark_safe_members: []
-
 # When true, members currently on the safe that are NOT in cyberark_safe_members
 # and NOT in cyberark_safe_standard_members (and are not predefined/built-in vault
 # users or the break glass member) will be removed.
@@ -64,7 +63,6 @@ cyberark_safe_purge_system_members:
 #     - "api_user@cyberark.cloud.12345"
 #     - "CPM-PasswordManager"
 cyberark_safe_purge_exclude_members: []
-
 # When false (default), existing members are left untouched — only missing members are added.
 # Set true to also push the declared permissions onto members that already exist.
 cyberark_safe_members_reconcile_permissions: false

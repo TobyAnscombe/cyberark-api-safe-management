@@ -325,7 +325,8 @@
       {%- if cyberark_safe_break_glass_enabled
              and cyberark_safe_break_glass_member | trim | length > 0
              and cyberark_safe_break_glass_member not in _cyberark_current_member_names -%}
-        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': cyberark_safe_break_glass_member, 'action': 'add', 'detail': 'break glass'}] -%}
+        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': cyberark_safe_break_glass_member,
+        'action': 'add', 'detail': 'break glass'}] -%}
       {%- endif -%}
       {{ ns.rows }}
   run_once: true

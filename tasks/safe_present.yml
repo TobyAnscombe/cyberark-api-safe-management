@@ -104,7 +104,7 @@
   run_once: true
   delegate_to: localhost
 
-- name: "[DRY RUN] Safe {{ cyberark_safe_name }} is up to date — no changes needed"
+- name: "[DRY RUN] Safe is up to date — no changes needed ({{ cyberark_safe_name }})"
   ansible.builtin.debug:
     msg: "{{ cyberark_safe_name }} matches desired state — skipping PUT"
   when:

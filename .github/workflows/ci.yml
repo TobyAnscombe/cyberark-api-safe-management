@@ -1,3 +1,4 @@
+---
 name: CI
 
 on:
@@ -5,7 +6,6 @@ on:
     branches: ["**"]
   pull_request:
     branches: ["**"]
-
 jobs:
   secret-scan:
     uses: TobyAnscombe/github-actions/.github/workflows/gitleaks.yml@main

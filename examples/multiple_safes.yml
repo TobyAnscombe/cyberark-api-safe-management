@@ -70,7 +70,7 @@
     - cyberark_api_authentication
 
   tasks:
-    - name: Manage safe "{{ item.name }}"  # noqa: var-naming[no-role-prefix]
+    - name: Manage safe "{{ item.name }}" # noqa: var-naming[no-role-prefix]
       include_role:
         name: cyberark_safe_management
       vars:

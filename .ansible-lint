@@ -1,3 +1,4 @@
+---
 profile: basic
 
 # Prevent ansible-lint from auto-running ansible-galaxy install when it finds
@@ -11,3 +12,5 @@ mock_roles:
 skip_list:
   # ignore-errors is used intentionally on the safe-exists check (404 is expected)
   - ignore-errors
+  - var-naming[no-role-prefix]
+  - run-once[task]

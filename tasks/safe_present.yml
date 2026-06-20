@@ -54,11 +54,62 @@
   run_once: true
   delegate_to: localhost
 
+- name: Build safe diff
+  set_fact:
+    _cyberark_safe_diff: >-
+      {{
+        (
+          {'description': cyberark_safe_description}
+          if (_cyberark_safe_check.json.description | default('')) != cyberark_safe_description
+          else {}
+        ) | combine(
+          {'location': cyberark_safe_location}
+          if (_cyberark_safe_check.json.location | default('\\')) != cyberark_safe_location
+          else {}
+        ) | combine(
+          {'managingCPM': cyberark_safe_managing_cpm}
+          if (_cyberark_safe_check.json.managingCPM | default('')) != cyberark_safe_managing_cpm
+          else {}
+        ) | combine(
+          {'numberOfVersionsRetention': cyberark_safe_number_of_versions_retention}
+          if cyberark_safe_number_of_versions_retention is not none
+             and (_cyberark_safe_check.json.numberOfVersionsRetention | default(none)) != (cyberark_safe_number_of_versions_retention | int)
+          else {}
+        ) | combine(
+          {'numberOfDaysRetention': cyberark_safe_number_of_days_retention}
+          if cyberark_safe_number_of_days_retention is not none
+             and (_cyberark_safe_check.json.numberOfDaysRetention | default(none)) != (cyberark_safe_number_of_days_retention | int)
+          else {}
+        ) | combine(
+          {'autoPurgeEnabled': cyberark_safe_auto_purge_enabled}
+          if (_cyberark_safe_check.json.autoPurgeEnabled | default(false) | bool) != (cyberark_safe_auto_purge_enabled | bool)
+          else {}
+        ) | combine(
+          {'olacEnabled': cyberark_safe_olac_enabled}
+          if (_cyberark_safe_check.json.olacEnabled | default(false) | bool) != (cyberark_safe_olac_enabled | bool)
+          else {}
+        )
+      }}
+  when: _cyberark_safe_check.status == 200
+  run_once: true
+  delegate_to: localhost
+
 - name: "[DRY RUN] Would update safe {{ cyberark_safe_name }}"
   ansible.builtin.debug:
-    msg: "PUT /Safes/{{ cyberark_safe_name }} — safe exists and would be updated"
+    msg: "PUT /Safes/{{ cyberark_safe_name }} — would change: {{ _cyberark_safe_diff | list | join(', ') }}"
   when:
     - _cyberark_safe_check.status == 200
+    - _cyberark_safe_diff | length > 0
+    - cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+
+- name: "[DRY RUN] Safe {{ cyberark_safe_name }} is up to date — no changes needed"
+  ansible.builtin.debug:
+    msg: "{{ cyberark_safe_name }} matches desired state — skipping PUT"
+  when:
+    - _cyberark_safe_check.status == 200
+    - _cyberark_safe_diff | length == 0
     - cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
@@ -92,6 +143,7 @@
   register: _cyberark_safe_update
   when:
     - _cyberark_safe_check.status == 200
+    - _cyberark_safe_diff | length > 0
     - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
@@ -110,6 +162,7 @@
     cyberark_safe_detail: "{{ _cyberark_safe_update.json }}"
   when:
     - _cyberark_safe_check.status == 200
+    - _cyberark_safe_diff | length > 0
     - not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost

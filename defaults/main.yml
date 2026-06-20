@@ -118,7 +118,7 @@ cyberark_safe_permissions_approver:
   manageSafe: false
   manageSafeMembers: false
   backupSafe: false
-  viewAuditLog: true
+  viewAuditLog: false
   viewSafeMembers: true
   accessWithoutConfirmation: false
   createFolders: false

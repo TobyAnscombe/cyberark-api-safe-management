@@ -148,6 +148,31 @@
   run_once: true
   delegate_to: localhost
 
+- name: Accumulate safe create in provision summary
+  set_fact:
+    _cyberark_provision_summary: >-
+      {{
+        _cyberark_provision_summary | default([]) +
+        [{'safe': cyberark_safe_name, 'type': 'safe', 'item': cyberark_safe_name, 'action': 'create', 'detail': ''}]
+      }}
+  when: _cyberark_safe_check.status == 404
+  run_once: true
+  delegate_to: localhost
+
+- name: Accumulate safe diff in provision summary
+  set_fact:
+    _cyberark_provision_summary: >-
+      {{
+        _cyberark_provision_summary | default([]) +
+        [{'safe': cyberark_safe_name, 'type': 'safe', 'item': cyberark_safe_name,
+          'action': 'update', 'detail': _cyberark_safe_diff | list | join(', ')}]
+      }}
+  when:
+    - _cyberark_safe_check.status == 200
+    - _cyberark_safe_diff | length > 0
+  run_once: true
+  delegate_to: localhost
+
 - name: Expose created safe as fact
   set_fact:
     cyberark_safe_detail: "{{ _cyberark_safe_create.json }}"

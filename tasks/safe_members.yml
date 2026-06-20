@@ -32,18 +32,70 @@
   run_once: true
   delegate_to: localhost
 
+# Pre-compute all change sets upfront so tasks loop over exact targets only,
+# and so the summary accumulation has concrete lists to work from.
+- name: Compute member change sets
+  set_fact:
+    _cyberark_members_to_add_std: >-
+      {{ cyberark_safe_standard_members | rejectattr('name', 'in', _cyberark_current_member_names) | list }}
+    _cyberark_members_to_add_custom: >-
+      {{ cyberark_safe_members | rejectattr('name', 'in', _cyberark_current_member_names) | list }}
+    _cyberark_members_to_update_std: >-
+      {%- set ns = namespace(result=[]) -%}
+      {%- if cyberark_safe_members_reconcile_permissions | default(false) -%}
+        {%- for m in cyberark_safe_standard_members -%}
+          {%- if m.name in _cyberark_current_member_names -%}
+            {%- set cur = (_cyberark_safe_members_current.json.value
+                | selectattr('memberName', 'equalto', m.name)
+                | list | first | default({})).permissions | default({}) -%}
+            {%- if cur != m.permissions -%}
+              {%- set ns.result = ns.result + [m] -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
+      {{ ns.result }}
+    _cyberark_members_to_update_custom: >-
+      {%- set ns = namespace(result=[]) -%}
+      {%- if cyberark_safe_members_reconcile_permissions | default(false) -%}
+        {%- for m in cyberark_safe_members -%}
+          {%- if m.name in _cyberark_current_member_names -%}
+            {%- set cur = (_cyberark_safe_members_current.json.value
+                | selectattr('memberName', 'equalto', m.name)
+                | list | first | default({})).permissions | default({}) -%}
+            {%- if cur != m.permissions -%}
+              {%- set ns.result = ns.result + [m] -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
+      {{ ns.result }}
+    _cyberark_members_to_purge: >-
+      {{
+        _cyberark_current_member_names
+        | difference(cyberark_safe_members | map(attribute='name') | list)
+        | difference(cyberark_safe_standard_members | map(attribute='name') | list)
+        | difference(
+            [cyberark_safe_break_glass_member]
+            if (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)
+            else []
+          )
+        | difference(cyberark_safe_purge_system_members | default([]))
+        | difference(cyberark_safe_purge_exclude_members | default([]))
+      }}
+  run_once: true
+  delegate_to: localhost
+
 # ---------------------------------------------------------------------------
 # Standard members — always reconciled first, never purged
 # ---------------------------------------------------------------------------
 - name: "[DRY RUN] Would add standard member"
   ansible.builtin.debug:
     msg: "POST /Members — {{ item.name }} not present and would be added"
-  loop: "{{ cyberark_safe_standard_members }}"
+  loop: "{{ _cyberark_members_to_add_std }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name not in _cyberark_current_member_names
-    - cyberark_dry_run | default(true) | bool
+  when: cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -61,25 +113,20 @@
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
-  loop: "{{ cyberark_safe_standard_members }}"
+  loop: "{{ _cyberark_members_to_add_std }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name not in _cyberark_current_member_names
-    - not cyberark_dry_run | default(true) | bool
+  when: not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
-- name: "[DRY RUN] Would update standard member"
+- name: "[DRY RUN] Would update standard member permissions"
   ansible.builtin.debug:
-    msg: "PUT /Members/{{ item.name }} — permissions would be reconciled"
-  loop: "{{ cyberark_safe_standard_members }}"
+    msg: "PUT /Members/{{ item.name }} — permissions differ and would be reconciled"
+  loop: "{{ _cyberark_members_to_update_std }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name in _cyberark_current_member_names
-    - cyberark_safe_members_reconcile_permissions | default(false)
-    - cyberark_dry_run | default(true) | bool
+  when: cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -95,13 +142,10 @@
     status_code: [200]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
-  loop: "{{ cyberark_safe_standard_members }}"
+  loop: "{{ _cyberark_members_to_update_std }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name in _cyberark_current_member_names
-    - cyberark_safe_members_reconcile_permissions | default(false)
-    - not cyberark_dry_run | default(true) | bool
+  when: not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -111,12 +155,10 @@
 - name: "[DRY RUN] Would add member"
   ansible.builtin.debug:
     msg: "POST /Members — {{ item.name }} not present and would be added"
-  loop: "{{ cyberark_safe_members }}"
+  loop: "{{ _cyberark_members_to_add_custom }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name not in _cyberark_current_member_names
-    - cyberark_dry_run | default(true) | bool
+  when: cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -134,25 +176,20 @@
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
-  loop: "{{ cyberark_safe_members }}"
+  loop: "{{ _cyberark_members_to_add_custom }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name not in _cyberark_current_member_names
-    - not cyberark_dry_run | default(true) | bool
+  when: not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
-- name: "[DRY RUN] Would update member"
+- name: "[DRY RUN] Would update member permissions"
   ansible.builtin.debug:
-    msg: "PUT /Members/{{ item.name }} — permissions would be reconciled"
-  loop: "{{ cyberark_safe_members }}"
+    msg: "PUT /Members/{{ item.name }} — permissions differ and would be reconciled"
+  loop: "{{ _cyberark_members_to_update_custom }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name in _cyberark_current_member_names
-    - cyberark_safe_members_reconcile_permissions | default(false)
-    - cyberark_dry_run | default(true) | bool
+  when: cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
@@ -168,31 +205,16 @@
     status_code: [200]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
-  loop: "{{ cyberark_safe_members }}"
+  loop: "{{ _cyberark_members_to_update_custom }}"
   loop_control:
     label: "{{ item.name }}"
-  when:
-    - item.name in _cyberark_current_member_names
-    - cyberark_safe_members_reconcile_permissions | default(false)
-    - not cyberark_dry_run | default(true) | bool
+  when: not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
 
 - name: "[DRY RUN] Would remove unmanaged members"
   ansible.builtin.debug:
-    msg: >-
-      DELETE /Members — would remove: {{
-        _cyberark_current_member_names
-        | difference(cyberark_safe_members | map(attribute='name') | list)
-        | difference(cyberark_safe_standard_members | map(attribute='name') | list)
-        | difference(
-            [cyberark_safe_break_glass_member]
-            if (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)
-            else []
-          )
-        | difference(cyberark_safe_purge_system_members | default([]))
-        | difference(cyberark_safe_purge_exclude_members | default([]))
-      }}
+    msg: "DELETE /Members — would remove: {{ _cyberark_members_to_purge }}"
   when:
     - cyberark_safe_members_purge
     - cyberark_dry_run | default(true) | bool
@@ -208,19 +230,9 @@
     status_code: [204]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
-  loop: >-
-    {{
-      _cyberark_current_member_names
-      | difference(cyberark_safe_members | map(attribute='name') | list)
-      | difference(cyberark_safe_standard_members | map(attribute='name') | list)
-      | difference(
-          [cyberark_safe_break_glass_member]
-          if (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)
-          else []
-        )
-      | difference(cyberark_safe_purge_system_members | default([]))
-      | difference(cyberark_safe_purge_exclude_members | default([]))
-    }}
+  loop: "{{ _cyberark_members_to_purge }}"
+  loop_control:
+    label: "{{ item }}"
   when:
     - cyberark_safe_members_purge
     - not cyberark_dry_run | default(true) | bool
@@ -228,7 +240,7 @@
   delegate_to: localhost
 
 # ---------------------------------------------------------------------------
-# Break glass member — always reconciled last, never purged
+# Break glass member — always reconciled last, never purged, no permission diff
 # ---------------------------------------------------------------------------
 - name: "[DRY RUN] Would add break glass member {{ cyberark_safe_break_glass_member }}"
   ansible.builtin.debug:
@@ -291,5 +303,30 @@
     - cyberark_safe_break_glass_member | trim | length > 0
     - cyberark_safe_break_glass_member in _cyberark_current_member_names
     - not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Accumulate member changes into provision summary
+# ---------------------------------------------------------------------------
+- name: Accumulate member changes in provision summary
+  set_fact:
+    _cyberark_provision_summary: >-
+      {%- set ns = namespace(rows=_cyberark_provision_summary | default([])) -%}
+      {%- for m in _cyberark_members_to_add_std + _cyberark_members_to_add_custom -%}
+        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': m.name, 'action': 'add', 'detail': ''}] -%}
+      {%- endfor -%}
+      {%- for m in _cyberark_members_to_update_std + _cyberark_members_to_update_custom -%}
+        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': m.name, 'action': 'perm-update', 'detail': ''}] -%}
+      {%- endfor -%}
+      {%- for name in (_cyberark_members_to_purge if cyberark_safe_members_purge else []) -%}
+        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': name, 'action': 'remove', 'detail': ''}] -%}
+      {%- endfor -%}
+      {%- if cyberark_safe_break_glass_enabled
+             and cyberark_safe_break_glass_member | trim | length > 0
+             and cyberark_safe_break_glass_member not in _cyberark_current_member_names -%}
+        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': cyberark_safe_break_glass_member, 'action': 'add', 'detail': 'break glass'}] -%}
+      {%- endif -%}
+      {{ ns.rows }}
   run_once: true
   delegate_to: localhost

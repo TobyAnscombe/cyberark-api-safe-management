@@ -121,6 +121,20 @@
   when: not cyberark_dry_run | default(true) | bool
   run_once: true
   delegate_to: localhost
+  register: _cyberark_add_std_result
+  ignore_errors: true
+
+- name: Warn about standard members that could not be added
+  ansible.builtin.debug:
+    msg: "WARNING — standard member '{{ item.item.name }}' could not be added to safe '{{ cyberark_safe_name }}': {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}"
+  loop: "{{ (_cyberark_add_std_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
+  run_once: true
+  delegate_to: localhost
 
 - name: "[DRY RUN] Would update standard member permissions"
   ansible.builtin.debug:
@@ -182,6 +196,20 @@
   loop_control:
     label: "{{ item.name }}"
   when: not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+  register: _cyberark_add_custom_result
+  ignore_errors: true
+
+- name: Warn about members that could not be added
+  ansible.builtin.debug:
+    msg: "WARNING — member '{{ item.item.name }}' could not be added to safe '{{ cyberark_safe_name }}': {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}"
+  loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
   run_once: true
   delegate_to: localhost
 
@@ -315,9 +343,24 @@
   set_fact:
     _cyberark_provision_summary: >-
       {%- set ns = namespace(rows=_cyberark_provision_summary | default([])) -%}
-      {%- for m in _cyberark_members_to_add_std + _cyberark_members_to_add_custom -%}
-        {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': m.name, 'action': 'add', 'detail': ''}] -%}
-      {%- endfor -%}
+      {%- if cyberark_dry_run | default(true) | bool -%}
+        {%- for m in _cyberark_members_to_add_std + _cyberark_members_to_add_custom -%}
+          {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': m.name, 'action': 'add', 'detail': ''}] -%}
+        {%- endfor -%}
+      {%- else -%}
+        {%- set _all_add_results = ((_cyberark_add_std_result | default({'results': []})).results | default([]))
+            + ((_cyberark_add_custom_result | default({'results': []})).results | default([])) -%}
+        {%- for r in _all_add_results -%}
+          {%- if not (r.skipped | default(false)) -%}
+            {%- if r.failed | default(false) -%}
+              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
+                  'action': 'add-failed', 'detail': r.json.ErrorMessage | default('group not defined in CyberArk')}] -%}
+            {%- else -%}
+              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name, 'action': 'add', 'detail': ''}] -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
       {%- for m in _cyberark_members_to_update_std + _cyberark_members_to_update_custom -%}
         {%- set cur = (_cyberark_safe_members_current.json.value
             | selectattr('memberName', 'equalto', m.name)

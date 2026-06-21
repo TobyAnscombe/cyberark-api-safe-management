@@ -126,7 +126,10 @@
 
 - name: Fail on unexpected standard member add errors
   ansible.builtin.fail:
-    msg: "Failed to add standard member '{{ item.item.name }}' to safe '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}): {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}"
+    msg: >-
+      Failed to add standard member '{{ item.item.name }}' to safe
+      '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}):
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
   loop: "{{ (_cyberark_add_std_result | default({'results': []})).results | default([]) }}"
   loop_control:
     label: "{{ item.item.name | default('unknown') }}"
@@ -139,7 +142,10 @@
 
 - name: Warn about standard members that could not be added
   ansible.builtin.debug:
-    msg: "WARNING — standard member '{{ item.item.name }}' could not be added to safe '{{ cyberark_safe_name }}': {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}"
+    msg: >-
+      WARNING — standard member '{{ item.item.name }}' could not be
+      added to safe '{{ cyberark_safe_name }}':
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}
   loop: "{{ (_cyberark_add_std_result | default({'results': []})).results | default([]) }}"
   loop_control:
     label: "{{ item.item.name | default('unknown') }}"
@@ -216,7 +222,10 @@
 
 - name: Fail on unexpected custom member add errors
   ansible.builtin.fail:
-    msg: "Failed to add member '{{ item.item.name }}' to safe '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}): {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}"
+    msg: >-
+      Failed to add member '{{ item.item.name }}' to safe
+      '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}):
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
   loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"
   loop_control:
     label: "{{ item.item.name | default('unknown') }}"
@@ -229,7 +238,10 @@
 
 - name: Warn about custom members that could not be added
   ansible.builtin.debug:
-    msg: "WARNING — member '{{ item.item.name }}' could not be added to safe '{{ cyberark_safe_name }}': {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}"
+    msg: >-
+      WARNING — member '{{ item.item.name }}' could not be added to safe
+      '{{ cyberark_safe_name }}':
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}
   loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"
   loop_control:
     label: "{{ item.item.name | default('unknown') }}"

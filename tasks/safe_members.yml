@@ -124,6 +124,19 @@
   register: _cyberark_add_std_result
   ignore_errors: true
 
+- name: Fail on unexpected standard member add errors
+  ansible.builtin.fail:
+    msg: "Failed to add standard member '{{ item.item.name }}' to safe '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}): {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}"
+  loop: "{{ (_cyberark_add_std_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
+    - (item.json.ErrorCode | default('')) != 'SFWS0010'
+  run_once: true
+  delegate_to: localhost
+
 - name: Warn about standard members that could not be added
   ansible.builtin.debug:
     msg: "WARNING — standard member '{{ item.item.name }}' could not be added to safe '{{ cyberark_safe_name }}': {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}"
@@ -201,7 +214,20 @@
   register: _cyberark_add_custom_result
   ignore_errors: true
 
-- name: Warn about members that could not be added
+- name: Fail on unexpected custom member add errors
+  ansible.builtin.fail:
+    msg: "Failed to add member '{{ item.item.name }}' to safe '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}): {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}"
+  loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
+    - (item.json.ErrorCode | default('')) != 'SFWS0010'
+  run_once: true
+  delegate_to: localhost
+
+- name: Warn about custom members that could not be added
   ansible.builtin.debug:
     msg: "WARNING — member '{{ item.item.name }}' could not be added to safe '{{ cyberark_safe_name }}': {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}"
   loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"

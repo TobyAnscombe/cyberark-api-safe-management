@@ -134,7 +134,7 @@
 
 - name: Update existing standard members
   uri:
-    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}"
+    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}/"
     method: PUT
     headers:
       Authorization: "Bearer {{ cyberark_token }}"
@@ -197,7 +197,7 @@
 
 - name: Update existing safe members
   uri:
-    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}"
+    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}/"
     method: PUT
     headers:
       Authorization: "Bearer {{ cyberark_token }}"
@@ -290,7 +290,7 @@
 
 - name: Update break glass member permissions
   uri:
-    url: "{{ _cyberark_safe_url }}/Members/{{ cyberark_safe_break_glass_member | urlencode }}"
+    url: "{{ _cyberark_safe_url }}/Members/{{ cyberark_safe_break_glass_member | urlencode }}/"
     method: PUT
     headers:
       Authorization: "Bearer {{ cyberark_token }}"

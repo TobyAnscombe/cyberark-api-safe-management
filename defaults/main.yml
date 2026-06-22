@@ -28,17 +28,22 @@ cyberark_safe_olac_enabled: false
 # These are never removed by the purge logic.
 # Add your Entra groups to the corresponding CyberArk groups rather than
 # adding them directly to individual safes.
+cyberark_safe_administrators_member: "Privilege Cloud Administrators"
+cyberark_safe_auditors_member: "Privilege Cloud Auditors"
+cyberark_safe_managers_member: "Privilege Cloud Safe Managers"
+cyberark_safe_approvers_member: "Privilege Cloud Access Approvers"
+
 cyberark_safe_standard_members:
-  - name: "Privilege Cloud Administrators"
+  - name: "{{ cyberark_safe_administrators_member }}"
     member_type: Group
     permissions: "{{ cyberark_safe_permissions_administrator }}"
-  - name: "Privilege Cloud Auditors"
+  - name: "{{ cyberark_safe_auditors_member }}"
     member_type: Group
     permissions: "{{ cyberark_safe_permissions_auditor }}"
-  - name: "Privilege Cloud Safe Managers"
+  - name: "{{ cyberark_safe_managers_member }}"
     member_type: Group
     permissions: "{{ cyberark_safe_permissions_safe_manager }}"
-  - name: "Privilege Cloud Access Approvers"
+  - name: "{{ cyberark_safe_approvers_member }}"
     member_type: Group
     permissions: "{{ cyberark_safe_permissions_approver }}"
 

@@ -112,8 +112,10 @@ Each item in `cyberark_safe_members` (custom additions):
 | Key | Required | Default | Description |
 |---|---|---|---|
 | `name` | yes | — | CyberArk group, user, or role name |
-| `member_type` | no | `User` | `User`, `Group`, or `Role` |
+| `member_type` | no | `User` | `User`, `Group`, or `Role` — see note below |
 | `permissions` | no | `cyberark_safe_member_default_permissions` | Permission dict (camelCase keys) |
+
+> **Group → Role fallback:** when `member_type: Group` fails with SFWS0010 (member not found as a vault group), the role automatically retries with `memberType: Role`. This covers SCIM-synced Entra groups that exist only as CyberArk Identity roles and have no vault group equivalent — no caller change required. Successful retries are noted as `(as Role)` in the provision summary. Explicitly set `member_type: Role` to skip the initial Group attempt.
 
 ### Predefined permission sets
 

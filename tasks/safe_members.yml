@@ -152,6 +152,64 @@
   when:
     - not cyberark_dry_run | default(true) | bool
     - item.failed | default(false)
+    - (item.json.ErrorCode | default('')) != 'SFWS0010'
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Standard member Role retry — SFWS0010 means the name was not found as a
+# vault Group; retry as an Identity Role (covers SCIM-synced Entra groups).
+# ---------------------------------------------------------------------------
+- name: Build standard member Role retry list
+  set_fact:
+    _cyberark_std_members_to_retry_as_role: >-
+      {%- set ns = namespace(result=[]) -%}
+      {%- for r in (_cyberark_add_std_result | default({'results': []})).results | default([]) -%}
+        {%- if r.failed | default(false) and (r.json.ErrorCode | default('')) == 'SFWS0010' -%}
+          {%- if (r.item.member_type | default('')) | lower != 'role' -%}
+            {%- set ns.result = ns.result + [r.item] -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ ns.result }}
+  run_once: true
+  delegate_to: localhost
+
+- name: Retry standard member as Identity Role
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      memberName: "{{ item.name }}"
+      memberType: "Role"
+      permissions: "{{ item.permissions }}"
+    status_code: [201]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  loop: "{{ _cyberark_std_members_to_retry_as_role | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+  register: _cyberark_add_std_role_retry_result
+  ignore_errors: true
+
+- name: Fail on standard member Role retry errors
+  ansible.builtin.fail:
+    msg: >-
+      Failed to add standard member '{{ item.item.name }}' to safe
+      '{{ cyberark_safe_name }}' as Group or Role (HTTP {{ item.status | default('?') }}):
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
+  loop: "{{ (_cyberark_add_std_role_retry_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
   run_once: true
   delegate_to: localhost
 
@@ -243,6 +301,64 @@
       '{{ cyberark_safe_name }}':
       {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}
   loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
+    - (item.json.ErrorCode | default('')) != 'SFWS0010'
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Custom member Role retry — SFWS0010 means the name was not found as a
+# vault Group; retry as an Identity Role (covers SCIM-synced Entra groups).
+# ---------------------------------------------------------------------------
+- name: Build custom member Role retry list
+  set_fact:
+    _cyberark_custom_members_to_retry_as_role: >-
+      {%- set ns = namespace(result=[]) -%}
+      {%- for r in (_cyberark_add_custom_result | default({'results': []})).results | default([]) -%}
+        {%- if r.failed | default(false) and (r.json.ErrorCode | default('')) == 'SFWS0010' -%}
+          {%- if (r.item.member_type | default('')) | lower != 'role' -%}
+            {%- set ns.result = ns.result + [r.item] -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ ns.result }}
+  run_once: true
+  delegate_to: localhost
+
+- name: Retry custom member as Identity Role
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      memberName: "{{ item.name }}"
+      memberType: "Role"
+      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
+    status_code: [201]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  loop: "{{ _cyberark_custom_members_to_retry_as_role | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+  register: _cyberark_add_custom_role_retry_result
+  ignore_errors: true
+
+- name: Fail on custom member Role retry errors
+  ansible.builtin.fail:
+    msg: >-
+      Failed to add member '{{ item.item.name }}' to safe
+      '{{ cyberark_safe_name }}' as Group or Role (HTTP {{ item.status | default('?') }}):
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
+  loop: "{{ (_cyberark_add_custom_role_retry_result | default({'results': []})).results | default([]) }}"
   loop_control:
     label: "{{ item.item.name | default('unknown') }}"
   when:
@@ -388,13 +504,27 @@
       {%- else -%}
         {%- set _all_add_results = ((_cyberark_add_std_result | default({'results': []})).results | default([]))
             + ((_cyberark_add_custom_result | default({'results': []})).results | default([])) -%}
+        {%- set _all_role_retry_results = ((_cyberark_add_std_role_retry_result | default({'results': []})).results | default([]))
+            + ((_cyberark_add_custom_role_retry_result | default({'results': []})).results | default([])) -%}
         {%- for r in _all_add_results -%}
           {%- if not (r.skipped | default(false)) -%}
             {%- if r.failed | default(false) -%}
-              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
-                  'action': 'add-failed', 'detail': r.json.ErrorMessage | default('group not defined in CyberArk')}] -%}
+              {%- if (r.json.ErrorCode | default('')) != 'SFWS0010' -%}
+                {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
+                    'action': 'add-failed', 'detail': r.json.ErrorMessage | default('group not defined in CyberArk')}] -%}
+              {%- endif -%}
             {%- else -%}
               {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name, 'action': 'add', 'detail': ''}] -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- for r in _all_role_retry_results -%}
+          {%- if not (r.skipped | default(false)) -%}
+            {%- if r.failed | default(false) -%}
+              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
+                  'action': 'add-failed', 'detail': r.json.ErrorMessage | default('not found as vault Group or Identity Role')}] -%}
+            {%- else -%}
+              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name, 'action': 'add', 'detail': '(as Role)'}] -%}
             {%- endif -%}
           {%- endif -%}
         {%- endfor -%}

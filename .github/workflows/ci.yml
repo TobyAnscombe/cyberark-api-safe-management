@@ -16,7 +16,7 @@ jobs:
     uses: TobyAnscombe/github-actions/.github/workflows/ansible-ci.yml@main
     with:
       ansible_lint_version: "26.1.0"
-      requirements_file: ""
+      requirements_file: "requirements.yml"
 
   claude-file-check:
     uses: TobyAnscombe/github-actions/.github/workflows/claude-file-check.yml@main

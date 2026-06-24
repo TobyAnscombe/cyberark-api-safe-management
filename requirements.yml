@@ -2,4 +2,4 @@
 roles:
   - name: cyberark_api_authentication
     src: https://github.com/TobyAnscombe/cyberark-api-management
-    version: v1.0.1
+    version: v1.0.2

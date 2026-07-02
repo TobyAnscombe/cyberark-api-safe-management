@@ -1,4 +1,28 @@
 ---
+# Member permission dicts may be partial (e.g. a hand-written override that
+# only sets a few keys). Normalize to the full ~22-key shape the API returns
+# so later comparisons and PUT bodies never treat "unspecified" as "false".
+- name: Normalize member permission dicts to full shape
+  set_fact:
+    cyberark_safe_standard_members: >-
+      {%- set result = [] -%}
+      {%- for m in cyberark_safe_standard_members -%}
+        {%- set full_perms = cyberark_safe_member_default_permissions
+            | combine(m.permissions | default(cyberark_safe_member_default_permissions)) -%}
+        {%- set _ = result.append(m | combine({'permissions': full_perms})) -%}
+      {%- endfor -%}
+      {{ result }}
+    cyberark_safe_members: >-
+      {%- set result = [] -%}
+      {%- for m in cyberark_safe_members -%}
+        {%- set full_perms = cyberark_safe_member_default_permissions
+            | combine(m.permissions | default(cyberark_safe_member_default_permissions)) -%}
+        {%- set _ = result.append(m | combine({'permissions': full_perms})) -%}
+      {%- endfor -%}
+      {{ result }}
+  run_once: true
+  delegate_to: localhost
+
 - name: Get current safe members
   uri:
     url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
@@ -9,6 +33,7 @@
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
   register: _cyberark_safe_members_current
+  no_log: true
   run_once: true
   delegate_to: localhost
 
@@ -115,6 +140,7 @@
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   loop: "{{ _cyberark_members_to_add_std }}"
   loop_control:
     label: "{{ item.name }}"
@@ -189,6 +215,7 @@
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   loop: "{{ _cyberark_std_members_to_retry_as_role | default([]) }}"
   loop_control:
     label: "{{ item.name }}"
@@ -235,6 +262,7 @@
     status_code: [200]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   loop: "{{ _cyberark_members_to_update_std }}"
   loop_control:
     label: "{{ item.name }}"
@@ -269,6 +297,7 @@
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   loop: "{{ _cyberark_members_to_add_custom }}"
   loop_control:
     label: "{{ item.name }}"
@@ -343,6 +372,7 @@
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   loop: "{{ _cyberark_custom_members_to_retry_as_role | default([]) }}"
   loop_control:
     label: "{{ item.name }}"
@@ -389,6 +419,7 @@
     status_code: [200]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   loop: "{{ _cyberark_members_to_update_custom }}"
   loop_control:
     label: "{{ item.name }}"
@@ -414,6 +445,7 @@
     status_code: [204, 404]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   loop: "{{ _cyberark_members_to_purge }}"
   loop_control:
     label: "{{ item }}"
@@ -451,6 +483,7 @@
     status_code: [201]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   when:
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0
@@ -482,6 +515,7 @@
     status_code: [200]
     timeout: 30
     validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
   when:
     - cyberark_safe_break_glass_enabled
     - cyberark_safe_break_glass_member | trim | length > 0

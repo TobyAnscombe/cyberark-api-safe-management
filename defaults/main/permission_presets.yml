@@ -1,0 +1,147 @@
+---
+# ---------------------------------------------------------------------------
+# Predefined permission sets
+# ---------------------------------------------------------------------------
+# Reference these in cyberark_safe_members entries:
+#   permissions: "{{ cyberark_safe_permissions_auditor }}"
+#
+# They match the four built-in Privilege Cloud roles.  Override any key by
+# merging with a dict update: permissions: "{{ cyberark_safe_permissions_auditor | combine({'viewAuditLog': false}) }}"
+#
+# Split into its own file (rather than defaults/main.yml) so external
+# consumers can include_vars this file directly as a single source of truth
+# for these five presets, instead of hand-copying the values. See
+# ansible-cyberark's tasks/load_safe_vars.yml for an example consumer.
+
+# Access Approver — can approve Level 1 dual-control requests; read-only otherwise.
+cyberark_safe_permissions_approver:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: true
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: false
+  viewSafeMembers: true
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: true
+  requestsAuthorizationLevel2: false
+
+# Privilege Cloud Auditor — read/audit access only; cannot retrieve or manage accounts.
+cyberark_safe_permissions_auditor:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: true
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# Privilege Cloud Safe Manager — full account and safe lifecycle management;
+# cannot use or retrieve account credentials.
+cyberark_safe_permissions_safe_manager:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: true
+  addAccounts: true
+  updateAccountContent: true
+  updateAccountProperties: true
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: true
+  deleteAccounts: true
+  unlockAccounts: true
+  manageSafe: true
+  manageSafeMembers: true
+  backupSafe: false
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: false
+  createFolders: true
+  deleteFolders: true
+  moveAccountsAndFolders: true
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# Privilege Cloud Administrator — full permissions except accessWithoutConfirmation,
+# which defaults to false (dual control). Intended for regular admin users;
+# use break glass for emergency-only accounts that must bypass dual control.
+cyberark_safe_permissions_administrator:
+  useAccounts: true
+  retrieveAccounts: true
+  listAccounts: true
+  addAccounts: true
+  updateAccountContent: true
+  updateAccountProperties: true
+  initiateCPMAccountManagementOperations: true
+  specifyNextAccountContent: true
+  renameAccounts: true
+  deleteAccounts: true
+  unlockAccounts: true
+  manageSafe: true
+  manageSafeMembers: true
+  backupSafe: true
+  viewAuditLog: true
+  viewSafeMembers: true
+  # Defaults to requiring confirmation (dual control) for regular admins now —
+  # the break glass member has its own always-on bypass, handled separately below.
+  accessWithoutConfirmation: false
+  createFolders: true
+  deleteFolders: true
+  moveAccountsAndFolders: true
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# Break glass permissions — see the break-glass toggle vars (enabled, member,
+# member_type) in defaults/main/main.yml. Identical to administrator except
+# accessWithoutConfirmation: true, so the account can bypass dual-control
+# workflows in an emergency.
+cyberark_safe_break_glass_permissions:
+  useAccounts: true
+  retrieveAccounts: true
+  listAccounts: true
+  addAccounts: true
+  updateAccountContent: true
+  updateAccountProperties: true
+  initiateCPMAccountManagementOperations: true
+  specifyNextAccountContent: true
+  renameAccounts: true
+  deleteAccounts: true
+  unlockAccounts: true
+  manageSafe: true
+  manageSafeMembers: true
+  backupSafe: true
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: true
+  createFolders: true
+  deleteFolders: true
+  moveAccountsAndFolders: true
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false

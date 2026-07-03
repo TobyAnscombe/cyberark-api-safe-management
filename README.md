@@ -121,6 +121,8 @@ Each item in `cyberark_safe_members` (custom additions):
 
 Four variables ship with permissions matching CyberArk's built-in Privilege Cloud roles. Use them in a member's `permissions` key instead of spelling out every flag.
 
+These five vars (the four below plus `cyberark_safe_break_glass_permissions`) live in their own file, `defaults/main/permission_presets.yml`, rather than the role's main `defaults/main/main.yml` — external consumers can `include_vars` that file directly as a single source of truth instead of hand-copying the values (as `ansible-cyberark` now does). `defaults/main.yml` is a directory as of v1.2.1; if any tooling expects it to be a single file, resolve role defaults through Ansible's normal precedence rather than reading that path directly.
+
 | Variable | Maps to |
 |---|---|
 | `cyberark_safe_permissions_approver` | Access Approver |

@@ -1,0 +1,186 @@
+---
+# Shared add/update reconciliation logic for one membership tier.
+# Included twice from safe_members.yml (once for the standard tier, once for
+# the custom tier) with different vars supplied by the caller:
+#   _cyberark_tier               — "standard" or "custom", used in task names/messages
+#   _cyberark_member_list_add    — members not yet present, to be added
+#   _cyberark_member_list_update — members present with differing permissions, to update
+#   _cyberark_default_member_type — memberType used when item.member_type is unset
+#   _cyberark_tier_purge_applies  — whether the purge tasks below run for this tier
+#
+# Results are registered under fixed names (_cyberark_tier_add_result,
+# _cyberark_tier_role_retry_result) — the caller must capture them into
+# tier-specific facts immediately after each include_tasks call, before the
+# next tier's include overwrites them.
+
+- name: "[DRY RUN] Would add member — {{ _cyberark_tier }}"
+  ansible.builtin.debug:
+    msg: "POST /Members — {{ item.name }} not present and would be added"
+  loop: "{{ _cyberark_member_list_add }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+
+- name: "Add missing members — {{ _cyberark_tier }}"
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      memberName: "{{ item.name }}"
+      memberType: "{{ item.member_type | default(_cyberark_default_member_type) }}"
+      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
+    status_code: [201]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
+  loop: "{{ _cyberark_member_list_add }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+  register: _cyberark_tier_add_result
+  ignore_errors: true
+
+- name: "Fail on unexpected member add errors — {{ _cyberark_tier }}"
+  ansible.builtin.fail:
+    msg: >-
+      Failed to add {{ _cyberark_tier }} member '{{ item.item.name }}' to safe
+      '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}):
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
+  loop: "{{ (_cyberark_tier_add_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
+    - (item.json.ErrorCode | default('')) != _cyberark_sfws0010
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Role retry — SFWS0010 means the name was not found as a vault Group; retry
+# as an Identity Role (covers SCIM-synced Entra groups).
+# ---------------------------------------------------------------------------
+- name: "Build member Role retry list — {{ _cyberark_tier }}"
+  set_fact:
+    _cyberark_tier_retry_as_role: >-
+      {%- set ns = namespace(result=[]) -%}
+      {%- for r in (_cyberark_tier_add_result | default({'results': []})).results | default([]) -%}
+        {%- if r.failed | default(false) and (r.json.ErrorCode | default('')) == _cyberark_sfws0010 -%}
+          {%- if (r.item.member_type | default('')) | lower != 'role' -%}
+            {%- set ns.result = ns.result + [r.item] -%}
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ ns.result }}
+  run_once: true
+  delegate_to: localhost
+
+- name: "Retry member as Identity Role — {{ _cyberark_tier }}"
+  uri:
+    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      memberName: "{{ item.name }}"
+      memberType: "Role"
+      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
+    status_code: [201]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
+  loop: "{{ _cyberark_tier_retry_as_role | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+  register: _cyberark_tier_role_retry_result
+  ignore_errors: true
+
+- name: "Fail on member Role retry errors — {{ _cyberark_tier }}"
+  ansible.builtin.fail:
+    msg: >-
+      Failed to add {{ _cyberark_tier }} member '{{ item.item.name }}' to safe
+      '{{ cyberark_safe_name }}' as Group or Role (HTTP {{ item.status | default('?') }}):
+      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
+  loop: "{{ (_cyberark_tier_role_retry_result | default({'results': []})).results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name | default('unknown') }}"
+  when:
+    - not cyberark_dry_run | default(true) | bool
+    - item.failed | default(false)
+  run_once: true
+  delegate_to: localhost
+
+- name: "[DRY RUN] Would update member permissions — {{ _cyberark_tier }}"
+  ansible.builtin.debug:
+    msg: "PUT /Members/{{ item.name }} — permissions differ and would be reconciled"
+  loop: "{{ _cyberark_member_list_update }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+
+- name: "Update existing members — {{ _cyberark_tier }}"
+  uri:
+    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}/"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    body_format: json
+    body:
+      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
+    status_code: [200]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
+  loop: "{{ _cyberark_member_list_update }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+
+# ---------------------------------------------------------------------------
+# Purge — only runs for the tier(s) the caller marks as purge-eligible via
+# _cyberark_tier_purge_applies (currently only the custom tier).
+# ---------------------------------------------------------------------------
+- name: "[DRY RUN] Would remove unmanaged members"
+  ansible.builtin.debug:
+    msg: "DELETE /Members — would remove: {{ _cyberark_members_to_purge }}"
+  when:
+    - _cyberark_tier_purge_applies | default(false)
+    - cyberark_safe_members_purge
+    - cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost
+
+- name: Remove unmanaged safe members
+  uri:
+    url: "{{ _cyberark_safe_url }}/Members/{{ item | urlencode }}/"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ cyberark_token }}"
+    status_code: [204, 404]
+    timeout: 30
+    validate_certs: "{{ cyberark_validate_certs }}"
+  no_log: true
+  loop: "{{ _cyberark_members_to_purge }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - _cyberark_tier_purge_applies | default(false)
+    - cyberark_safe_members_purge
+    - not cyberark_dry_run | default(true) | bool
+  run_once: true
+  delegate_to: localhost

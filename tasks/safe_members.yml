@@ -4,6 +4,7 @@
 # so later comparisons and PUT bodies never treat "unspecified" as "false".
 - name: Normalize member permission dicts to full shape
   set_fact:
+    _cyberark_sfws0010: "SFWS0010"
     cyberark_safe_standard_members: >-
       {%- set result = [] -%}
       {%- for m in cyberark_safe_standard_members -%}
@@ -34,6 +35,7 @@
     validate_certs: "{{ cyberark_validate_certs }}"
   register: _cyberark_safe_members_current
   no_log: true
+  check_mode: false
   run_once: true
   delegate_to: localhost
 
@@ -104,7 +106,7 @@
         | difference(cyberark_safe_standard_members | map(attribute='name') | list)
         | difference(
             [cyberark_safe_break_glass_member]
-            if (cyberark_safe_break_glass_enabled and cyberark_safe_break_glass_member | trim | length > 0)
+            if cyberark_safe_break_glass_member | trim | length > 0
             else []
           )
         | difference(cyberark_safe_purge_system_members | default([]))
@@ -116,342 +118,38 @@
 # ---------------------------------------------------------------------------
 # Standard members — always reconciled first, never purged
 # ---------------------------------------------------------------------------
-- name: "[DRY RUN] Would add standard member"
-  ansible.builtin.debug:
-    msg: "POST /Members — {{ item.name }} not present and would be added"
-  loop: "{{ _cyberark_members_to_add_std }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
+- name: Manage standard tier members
+  ansible.builtin.include_tasks: _member_tier.yml
+  vars:
+    _cyberark_tier: standard
+    _cyberark_member_list_add: "{{ _cyberark_members_to_add_std }}"
+    _cyberark_member_list_update: "{{ _cyberark_members_to_update_std }}"
+    _cyberark_default_member_type: Group
+    _cyberark_tier_purge_applies: false
 
-- name: Add missing standard members
-  uri:
-    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ cyberark_token }}"
-    body_format: json
-    body:
-      memberName: "{{ item.name }}"
-      memberType: "{{ item.member_type | default('Group') }}"
-      permissions: "{{ item.permissions }}"
-    status_code: [201]
-    timeout: 30
-    validate_certs: "{{ cyberark_validate_certs }}"
-  no_log: true
-  loop: "{{ _cyberark_members_to_add_std }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: not cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-  register: _cyberark_add_std_result
-  ignore_errors: true
-
-- name: Fail on unexpected standard member add errors
-  ansible.builtin.fail:
-    msg: >-
-      Failed to add standard member '{{ item.item.name }}' to safe
-      '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}):
-      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
-  loop: "{{ (_cyberark_add_std_result | default({'results': []})).results | default([]) }}"
-  loop_control:
-    label: "{{ item.item.name | default('unknown') }}"
-  when:
-    - not cyberark_dry_run | default(true) | bool
-    - item.failed | default(false)
-    - (item.json.ErrorCode | default('')) != 'SFWS0010'
-  run_once: true
-  delegate_to: localhost
-
-- name: Warn about standard members that could not be added
-  ansible.builtin.debug:
-    msg: >-
-      WARNING — standard member '{{ item.item.name }}' could not be
-      added to safe '{{ cyberark_safe_name }}':
-      {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}
-  loop: "{{ (_cyberark_add_std_result | default({'results': []})).results | default([]) }}"
-  loop_control:
-    label: "{{ item.item.name | default('unknown') }}"
-  when:
-    - not cyberark_dry_run | default(true) | bool
-    - item.failed | default(false)
-    - (item.json.ErrorCode | default('')) != 'SFWS0010'
-  run_once: true
-  delegate_to: localhost
-
-# ---------------------------------------------------------------------------
-# Standard member Role retry — SFWS0010 means the name was not found as a
-# vault Group; retry as an Identity Role (covers SCIM-synced Entra groups).
-# ---------------------------------------------------------------------------
-- name: Build standard member Role retry list
+- name: Capture standard tier add results
   set_fact:
-    _cyberark_std_members_to_retry_as_role: >-
-      {%- set ns = namespace(result=[]) -%}
-      {%- for r in (_cyberark_add_std_result | default({'results': []})).results | default([]) -%}
-        {%- if r.failed | default(false) and (r.json.ErrorCode | default('')) == 'SFWS0010' -%}
-          {%- if (r.item.member_type | default('')) | lower != 'role' -%}
-            {%- set ns.result = ns.result + [r.item] -%}
-          {%- endif -%}
-        {%- endif -%}
-      {%- endfor -%}
-      {{ ns.result }}
-  run_once: true
-  delegate_to: localhost
-
-- name: Retry standard member as Identity Role
-  uri:
-    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ cyberark_token }}"
-    body_format: json
-    body:
-      memberName: "{{ item.name }}"
-      memberType: "Role"
-      permissions: "{{ item.permissions }}"
-    status_code: [201]
-    timeout: 30
-    validate_certs: "{{ cyberark_validate_certs }}"
-  no_log: true
-  loop: "{{ _cyberark_std_members_to_retry_as_role | default([]) }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: not cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-  register: _cyberark_add_std_role_retry_result
-  ignore_errors: true
-
-- name: Fail on standard member Role retry errors
-  ansible.builtin.fail:
-    msg: >-
-      Failed to add standard member '{{ item.item.name }}' to safe
-      '{{ cyberark_safe_name }}' as Group or Role (HTTP {{ item.status | default('?') }}):
-      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
-  loop: "{{ (_cyberark_add_std_role_retry_result | default({'results': []})).results | default([]) }}"
-  loop_control:
-    label: "{{ item.item.name | default('unknown') }}"
-  when:
-    - not cyberark_dry_run | default(true) | bool
-    - item.failed | default(false)
-  run_once: true
-  delegate_to: localhost
-
-- name: "[DRY RUN] Would update standard member permissions"
-  ansible.builtin.debug:
-    msg: "PUT /Members/{{ item.name }} — permissions differ and would be reconciled"
-  loop: "{{ _cyberark_members_to_update_std }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-
-- name: Update existing standard members
-  uri:
-    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}/"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ cyberark_token }}"
-    body_format: json
-    body:
-      permissions: "{{ item.permissions }}"
-    status_code: [200]
-    timeout: 30
-    validate_certs: "{{ cyberark_validate_certs }}"
-  no_log: true
-  loop: "{{ _cyberark_members_to_update_std }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: not cyberark_dry_run | default(true) | bool
+    _cyberark_add_std_result: "{{ _cyberark_tier_add_result | default({'results': []}) }}"
+    _cyberark_add_std_role_retry_result: "{{ _cyberark_tier_role_retry_result | default({'results': []}) }}"
   run_once: true
   delegate_to: localhost
 
 # ---------------------------------------------------------------------------
 # Custom members
 # ---------------------------------------------------------------------------
-- name: "[DRY RUN] Would add member"
-  ansible.builtin.debug:
-    msg: "POST /Members — {{ item.name }} not present and would be added"
-  loop: "{{ _cyberark_members_to_add_custom }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
+- name: Manage custom tier members
+  ansible.builtin.include_tasks: _member_tier.yml
+  vars:
+    _cyberark_tier: custom
+    _cyberark_member_list_add: "{{ _cyberark_members_to_add_custom }}"
+    _cyberark_member_list_update: "{{ _cyberark_members_to_update_custom }}"
+    _cyberark_default_member_type: User
+    _cyberark_tier_purge_applies: true
 
-- name: Add new safe members
-  uri:
-    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ cyberark_token }}"
-    body_format: json
-    body:
-      memberName: "{{ item.name }}"
-      memberType: "{{ item.member_type | default('User') }}"
-      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
-    status_code: [201]
-    timeout: 30
-    validate_certs: "{{ cyberark_validate_certs }}"
-  no_log: true
-  loop: "{{ _cyberark_members_to_add_custom }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: not cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-  register: _cyberark_add_custom_result
-  ignore_errors: true
-
-- name: Fail on unexpected custom member add errors
-  ansible.builtin.fail:
-    msg: >-
-      Failed to add member '{{ item.item.name }}' to safe
-      '{{ cyberark_safe_name }}' (HTTP {{ item.status | default('?') }}):
-      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
-  loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"
-  loop_control:
-    label: "{{ item.item.name | default('unknown') }}"
-  when:
-    - not cyberark_dry_run | default(true) | bool
-    - item.failed | default(false)
-    - (item.json.ErrorCode | default('')) != 'SFWS0010'
-  run_once: true
-  delegate_to: localhost
-
-- name: Warn about custom members that could not be added
-  ansible.builtin.debug:
-    msg: >-
-      WARNING — member '{{ item.item.name }}' could not be added to safe
-      '{{ cyberark_safe_name }}':
-      {{ item.json.ErrorMessage | default(item.msg | default('unknown error')) }}
-  loop: "{{ (_cyberark_add_custom_result | default({'results': []})).results | default([]) }}"
-  loop_control:
-    label: "{{ item.item.name | default('unknown') }}"
-  when:
-    - not cyberark_dry_run | default(true) | bool
-    - item.failed | default(false)
-    - (item.json.ErrorCode | default('')) != 'SFWS0010'
-  run_once: true
-  delegate_to: localhost
-
-# ---------------------------------------------------------------------------
-# Custom member Role retry — SFWS0010 means the name was not found as a
-# vault Group; retry as an Identity Role (covers SCIM-synced Entra groups).
-# ---------------------------------------------------------------------------
-- name: Build custom member Role retry list
+- name: Capture custom tier add results
   set_fact:
-    _cyberark_custom_members_to_retry_as_role: >-
-      {%- set ns = namespace(result=[]) -%}
-      {%- for r in (_cyberark_add_custom_result | default({'results': []})).results | default([]) -%}
-        {%- if r.failed | default(false) and (r.json.ErrorCode | default('')) == 'SFWS0010' -%}
-          {%- if (r.item.member_type | default('')) | lower != 'role' -%}
-            {%- set ns.result = ns.result + [r.item] -%}
-          {%- endif -%}
-        {%- endif -%}
-      {%- endfor -%}
-      {{ ns.result }}
-  run_once: true
-  delegate_to: localhost
-
-- name: Retry custom member as Identity Role
-  uri:
-    url: "https://{{ cyberark_subdomain }}.privilegecloud.cyberark.cloud/passwordvault/api/Safes/{{ cyberark_safe_name | urlencode }}/Members"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ cyberark_token }}"
-    body_format: json
-    body:
-      memberName: "{{ item.name }}"
-      memberType: "Role"
-      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
-    status_code: [201]
-    timeout: 30
-    validate_certs: "{{ cyberark_validate_certs }}"
-  no_log: true
-  loop: "{{ _cyberark_custom_members_to_retry_as_role | default([]) }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: not cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-  register: _cyberark_add_custom_role_retry_result
-  ignore_errors: true
-
-- name: Fail on custom member Role retry errors
-  ansible.builtin.fail:
-    msg: >-
-      Failed to add member '{{ item.item.name }}' to safe
-      '{{ cyberark_safe_name }}' as Group or Role (HTTP {{ item.status | default('?') }}):
-      {{ item.json.ErrorMessage | default(item.msg | default('unknown')) }}
-  loop: "{{ (_cyberark_add_custom_role_retry_result | default({'results': []})).results | default([]) }}"
-  loop_control:
-    label: "{{ item.item.name | default('unknown') }}"
-  when:
-    - not cyberark_dry_run | default(true) | bool
-    - item.failed | default(false)
-  run_once: true
-  delegate_to: localhost
-
-- name: "[DRY RUN] Would update member permissions"
-  ansible.builtin.debug:
-    msg: "PUT /Members/{{ item.name }} — permissions differ and would be reconciled"
-  loop: "{{ _cyberark_members_to_update_custom }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-
-- name: Update existing safe members
-  uri:
-    url: "{{ _cyberark_safe_url }}/Members/{{ item.name | urlencode }}/"
-    method: PUT
-    headers:
-      Authorization: "Bearer {{ cyberark_token }}"
-    body_format: json
-    body:
-      permissions: "{{ item.permissions | default(cyberark_safe_member_default_permissions) }}"
-    status_code: [200]
-    timeout: 30
-    validate_certs: "{{ cyberark_validate_certs }}"
-  no_log: true
-  loop: "{{ _cyberark_members_to_update_custom }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when: not cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-
-- name: "[DRY RUN] Would remove unmanaged members"
-  ansible.builtin.debug:
-    msg: "DELETE /Members — would remove: {{ _cyberark_members_to_purge }}"
-  when:
-    - cyberark_safe_members_purge
-    - cyberark_dry_run | default(true) | bool
-  run_once: true
-  delegate_to: localhost
-
-- name: Remove unmanaged safe members
-  uri:
-    url: "{{ _cyberark_safe_url }}/Members/{{ item | urlencode }}/"
-    method: DELETE
-    headers:
-      Authorization: "Bearer {{ cyberark_token }}"
-    status_code: [204, 404]
-    timeout: 30
-    validate_certs: "{{ cyberark_validate_certs }}"
-  no_log: true
-  loop: "{{ _cyberark_members_to_purge }}"
-  loop_control:
-    label: "{{ item }}"
-  when:
-    - cyberark_safe_members_purge
-    - not cyberark_dry_run | default(true) | bool
+    _cyberark_add_custom_result: "{{ _cyberark_tier_add_result | default({'results': []}) }}"
+    _cyberark_add_custom_role_retry_result: "{{ _cyberark_tier_role_retry_result | default({'results': []}) }}"
   run_once: true
   delegate_to: localhost
 
@@ -543,7 +241,7 @@
         {%- for r in _all_add_results -%}
           {%- if not (r.skipped | default(false)) -%}
             {%- if r.failed | default(false) -%}
-              {%- if (r.json.ErrorCode | default('')) != 'SFWS0010' -%}
+              {%- if (r.json.ErrorCode | default('')) != _cyberark_sfws0010 -%}
                 {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
                     'action': 'add-failed', 'detail': r.json.ErrorMessage | default('group not defined in CyberArk')}] -%}
               {%- endif -%}

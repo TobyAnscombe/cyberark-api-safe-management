@@ -1,7 +1,7 @@
 ---
 # Example: authenticate to CyberArk and manage a safe.
 #
-# The three Privilege Cloud built-in groups are added to every safe by default.
+# The four Privilege Cloud built-in groups are added to every safe by default.
 # Assign your Entra groups to those CyberArk groups rather than to individual safes.
 #
 # Run:
@@ -48,7 +48,7 @@
     #   - Privilege Cloud Auditors          (auditor permissions)
     #   - Privilege Cloud Safe Managers     (safe manager permissions)
     #   - Privilege Cloud Access Approvers  (approver permissions)
-    #   - CyberArk Break Glass Access       (full permissions, never purged)
+    #   - Privilege Cloud Break Glass Access (full permissions, never purged)
     #
     # Add Entra groups to the corresponding CyberArk groups rather than to individual safes.
     #
@@ -65,7 +65,7 @@
     # Break glass — emergency access that bypasses dual-control workflows.
     # This member is never removed by purge logic.
     # cyberark_safe_break_glass_enabled: true          # on by default
-    # cyberark_safe_break_glass_member: "CyberArk Break Glass Access"  # default
+    # cyberark_safe_break_glass_member: "Privilege Cloud Break Glass Access"  # default
     # cyberark_safe_break_glass_member_type: "Group"   # default
 
   roles:

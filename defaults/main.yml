@@ -183,8 +183,9 @@ cyberark_safe_permissions_safe_manager:
   requestsAuthorizationLevel1: false
   requestsAuthorizationLevel2: false
 
-# Privilege Cloud Administrator — full permissions including accessWithoutConfirmation.
-# Intended for regular admin users; use break glass for emergency-only accounts.
+# Privilege Cloud Administrator — full permissions except accessWithoutConfirmation,
+# which defaults to false (dual control). Intended for regular admin users;
+# use break glass for emergency-only accounts that must bypass dual control.
 cyberark_safe_permissions_administrator:
   useAccounts: true
   retrieveAccounts: true
@@ -202,7 +203,9 @@ cyberark_safe_permissions_administrator:
   backupSafe: true
   viewAuditLog: true
   viewSafeMembers: true
-  accessWithoutConfirmation: true
+  # Defaults to requiring confirmation (dual control) for regular admins now —
+  # the break glass member has its own always-on bypass, handled separately below.
+  accessWithoutConfirmation: false
   createFolders: true
   deleteFolders: true
   moveAccountsAndFolders: true

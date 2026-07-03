@@ -10,6 +10,7 @@
     validate_certs: "{{ cyberark_validate_certs }}"
   register: _cyberark_safe_check
   no_log: true
+  check_mode: false
   run_once: true
   delegate_to: localhost
 

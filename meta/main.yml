@@ -7,7 +7,7 @@ galaxy_info:
     Idempotently creates, updates, or deletes a CyberArk Privilege Cloud safe
     and manages its members via the REST API
   license: MIT
-  min_ansible_version: "2.9"
+  min_ansible_version: "2.14"
   platforms:
     - name: EL
       versions: ["8", "9"]
@@ -17,8 +17,5 @@ galaxy_info:
       versions: [bullseye, bookworm]
 
 # cyberark_token must be present on the play before this role runs.
-# Supply it via cyberark_api_authentication (listed below) or by another means.
-dependencies:
-  - src: https://github.com/TobyAnscombe/cyberark-api-management
-    name: cyberark_api_authentication
-    version: v1.0.2
+# Enforced by the assert in tasks/main.yml, not by a hard role dependency, so
+# callers may supply it via cyberark_api_authentication or by another means.

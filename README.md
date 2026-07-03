@@ -19,7 +19,7 @@ All API calls run `delegate_to: localhost` / `run_once: true` — safe managemen
 
 ## Requirements
 
-- Ansible 2.9+
+- Ansible 2.14+
 - `cyberark_token` present on the play — produced by [`tobyanscombe.cyberark_api_authentication`](https://github.com/TobyAnscombe/cyberark-api-management) or supplied by any other means
 - A CyberArk Privilege Cloud tenant
 
@@ -30,7 +30,7 @@ All API calls run `delegate_to: localhost` / `run_once: true` — safe managemen
 roles:
   - name: cyberark_api_authentication
     src: https://github.com/TobyAnscombe/cyberark-api-management
-    version: main
+    version: v1.0.3
   - name: cyberark_safe_management
     src: https://github.com/TobyAnscombe/cyberark-api-safe-management
     version: main
@@ -250,7 +250,7 @@ ansible-playbook site.yml --vault-password-file ~/.vault_pass
 
 By default the role is additive — existing members not listed in `cyberark_safe_members` are left untouched. Set `cyberark_safe_members_purge: true` to enforce the declared list as the complete desired state.
 
-Five categories of member are always excluded from purge:
+Six categories of member are always excluded from purge:
 - **Built-in vault accounts** (`isPredefinedUser: true`, e.g. `Master`, `Batch`)
 - **Read-only memberships** (`isReadOnly: true`) — safe creator or Identity-managed direct assignments that cannot be deleted or updated via the Members API
 - **Standard members** — the four built-in Privilege Cloud groups in `cyberark_safe_standard_members`

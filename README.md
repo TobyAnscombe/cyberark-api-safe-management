@@ -53,7 +53,7 @@ ansible-galaxy install -r requirements.yml
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `cyberark_safe_name` | yes | `""` | Safe name |
+| `cyberark_safe_name` | yes | `""` | Safe name — max 28 characters (Privilege Cloud limit; validated up front, fails fast rather than a generic API 400) |
 | `cyberark_safe_state` | no | `present` | `present` or `absent` |
 
 ### Safe properties

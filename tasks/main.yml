@@ -13,6 +13,18 @@
   run_once: true
   delegate_to: localhost
 
+- name: Validate safe name length
+  assert:
+    that:
+      - cyberark_safe_name | length <= 28
+    fail_msg: >-
+      cyberark_safe_name '{{ cyberark_safe_name }}' is {{ cyberark_safe_name | length }}
+      characters — Privilege Cloud safe names are limited to 28 characters. The API
+      rejects longer names with a generic 400 Bad Request, not a name-specific error,
+      so this fails fast with a clear message instead.
+  run_once: true
+  delegate_to: localhost
+
 - name: Validate break glass configuration
   assert:
     that:

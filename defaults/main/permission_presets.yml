@@ -145,3 +145,100 @@ cyberark_safe_break_glass_permissions:
   moveAccountsAndFolders: true
   requestsAuthorizationLevel1: false
   requestsAuthorizationLevel2: false
+
+# ---------------------------------------------------------------------------
+# Additional permission presets
+# ---------------------------------------------------------------------------
+# These extend beyond CyberArk's four built-in Privilege Cloud roles to cover
+# common access patterns — not tied to a specific built-in role, but common
+# enough across deployments to ship as defaults rather than every consumer
+# reinventing them.
+
+# No access — useful as a base for combine()-ing a narrow override on top of,
+# e.g. permissions: "{{ cyberark_safe_permissions_no_access | combine({'listAccounts': true}) }}"
+cyberark_safe_permissions_no_access:
+  useAccounts: false
+  retrieveAccounts: false
+  listAccounts: false
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: false
+  viewSafeMembers: false
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false
+
+# Personal privileged account owner — CPM-managed (automatic_management:
+# true). The user triggers CPM rotation rather than setting the password
+# directly. See cyberark_safe_permissions_personal_owner below for the
+# no-CPM equivalent.
+cyberark_safe_permissions_ppa_owner:
+  useAccounts: true
+  retrieveAccounts: true
+  listAccounts: true
+  addAccounts: true
+  updateAccountContent: false
+  updateAccountProperties: true
+  initiateCPMAccountManagementOperations: true
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: true
+  viewSafeMembers: true
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: true
+  requestsAuthorizationLevel2: false
+
+# Personal account owner — no CPM rotation (automatic_management: false).
+# The user manages their own password directly instead of triggering CPM.
+# Differs from cyberark_safe_permissions_ppa_owner in exactly two keys.
+cyberark_safe_permissions_personal_owner: >-
+  {{
+    cyberark_safe_permissions_ppa_owner
+    | combine({'updateAccountContent': true, 'initiateCPMAccountManagementOperations': false})
+  }}
+
+# PSM session access only — no password retrieval. Common for third-party
+# vendor access via connect-only sessions.
+cyberark_safe_permissions_connect_only:
+  useAccounts: true
+  retrieveAccounts: false
+  listAccounts: true
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: false
+  viewSafeMembers: false
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false

@@ -121,7 +121,7 @@ Each item in `cyberark_safe_members` (custom additions):
 
 Four variables ship with permissions matching CyberArk's built-in Privilege Cloud roles. Use them in a member's `permissions` key instead of spelling out every flag.
 
-These five vars (the four below plus `cyberark_safe_break_glass_permissions`) live in their own file, `defaults/main/permission_presets.yml`, rather than the role's main `defaults/main/main.yml` — external consumers can `include_vars` that file directly as a single source of truth instead of hand-copying the values (as `ansible-cyberark` now does). `defaults/main.yml` is a directory as of v1.2.1; if any tooling expects it to be a single file, resolve role defaults through Ansible's normal precedence rather than reading that path directly.
+These vars, plus `cyberark_safe_break_glass_permissions` and the additional presets below, all live in their own file, `defaults/main/permission_presets.yml`, rather than the role's main `defaults/main/main.yml` — external consumers can `include_vars` that file directly as a single source of truth instead of hand-copying the values (as `ansible-cyberark` now does). `defaults/main.yml` is a directory as of v1.2.1; if any tooling expects it to be a single file, resolve role defaults through Ansible's normal precedence rather than reading that path directly.
 
 | Variable | Maps to |
 |---|---|
@@ -162,6 +162,17 @@ Override individual keys with Ansible's `combine` filter:
 ```yaml
 permissions: "{{ cyberark_safe_permissions_auditor | combine({'retrieveAccounts': true}) }}"
 ```
+
+### Additional permission presets
+
+A few more presets ship for common access patterns beyond CyberArk's four built-in roles — not mapped to a specific built-in role, but common enough across deployments to ship rather than every consumer redefining them.
+
+| Variable | Description |
+|---|---|
+| `cyberark_safe_permissions_no_access` | All-false. Useful as a base for `combine()`-ing a narrow, explicit grant on top of. |
+| `cyberark_safe_permissions_ppa_owner` | Personal privileged account owner, CPM-managed (`automatic_management: true`) — user triggers CPM rotation rather than setting the password directly. |
+| `cyberark_safe_permissions_personal_owner` | Personal account owner, no CPM (`automatic_management: false`) — user manages their own password directly. Differs from `ppa_owner` in exactly `updateAccountContent` and `initiateCPMAccountManagementOperations`; defined as a `combine()` on top of it. |
+| `cyberark_safe_permissions_connect_only` | PSM session access only, no password retrieval — e.g. third-party vendor access. |
 
 ### Break glass access
 

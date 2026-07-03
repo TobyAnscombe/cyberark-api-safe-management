@@ -30,10 +30,10 @@ All API calls run `delegate_to: localhost` / `run_once: true` — safe managemen
 roles:
   - name: cyberark_api_authentication
     src: https://github.com/TobyAnscombe/cyberark-api-management
-    version: v1.0.3
+    version: v1.1.0
   - name: cyberark_safe_management
     src: https://github.com/TobyAnscombe/cyberark-api-safe-management
-    version: main
+    version: v1.2.0
 ```
 
 ```bash

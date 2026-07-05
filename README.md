@@ -33,7 +33,7 @@ roles:
     version: v1.1.0
   - name: cyberark_safe_management
     src: https://github.com/TobyAnscombe/cyberark-api-safe-management
-    version: v1.2.0
+    version: v1.3.2
 ```
 
 ```bash

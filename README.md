@@ -115,7 +115,9 @@ Each item in `cyberark_safe_members` (custom additions):
 | `member_type` | no | `User` | `User`, `Group`, or `Role` — see note below |
 | `permissions` | no | `cyberark_safe_member_default_permissions` | Permission dict (camelCase keys) |
 
-> **Group → Role fallback:** when `member_type: Group` fails with SFWS0010 (member not found as a vault group), the role automatically retries with `memberType: Role`. This covers SCIM-synced Entra groups that exist only as CyberArk Identity roles and have no vault group equivalent — no caller change required. Successful retries are noted as `(as Role)` in the provision summary. Explicitly set `member_type: Role` to skip the initial Group attempt.
+> **Group → Role fallback:** when `member_type: Group` fails with SFWS0010 (member not found as a vault group), the role automatically retries with `memberType: Role`. This covers SCIM-synced Entra groups that exist only as CyberArk Identity roles and have no vault group equivalent — no caller change required. Successful retries are noted as `(as Role)` in the provision summary (`standard member (as Role)` for a standard-tier retry, `(as Role)` alone for a custom-tier retry). Explicitly set `member_type: Role` to skip the initial Group attempt.
+
+> **Provision summary comments:** an `add` row for a standard-tier member (the always-on defaults in `cyberark_safe_standard_members`) is noted as `standard member` in the summary, matching how the always-on break glass member is noted as `break glass` — both are global, non-optional members, unlike custom-tier members which get no comment.
 
 ### Predefined permission sets
 

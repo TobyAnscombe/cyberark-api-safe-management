@@ -229,15 +229,29 @@
   set_fact:
     _cyberark_provision_summary: >-
       {%- set ns = namespace(rows=_cyberark_provision_summary | default([])) -%}
+      {%- set _std_tag = {'_cyberark_tier_detail': 'standard member'} -%}
+      {%- set _std_role_tag = {'_cyberark_tier_detail': 'standard member (as Role)'} -%}
+      {%- set _custom_tag = {'_cyberark_tier_detail': ''} -%}
+      {%- set _custom_role_tag = {'_cyberark_tier_detail': '(as Role)'} -%}
       {%- if cyberark_dry_run | default(true) | bool -%}
-        {%- for m in _cyberark_members_to_add_std + _cyberark_members_to_add_custom -%}
-          {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': m.name, 'action': 'add', 'detail': ''}] -%}
+        {%- set _all_add_pending =
+            (_cyberark_members_to_add_std | map('combine', _std_tag) | list)
+            + (_cyberark_members_to_add_custom | map('combine', _custom_tag) | list) -%}
+        {%- for m in _all_add_pending -%}
+          {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member',
+              'item': m.name, 'action': 'add', 'detail': m._cyberark_tier_detail}] -%}
         {%- endfor -%}
       {%- else -%}
-        {%- set _all_add_results = ((_cyberark_add_std_result | default({'results': []})).results | default([]))
-            + ((_cyberark_add_custom_result | default({'results': []})).results | default([])) -%}
-        {%- set _all_role_retry_results = ((_cyberark_add_std_role_retry_result | default({'results': []})).results | default([]))
-            + ((_cyberark_add_custom_role_retry_result | default({'results': []})).results | default([])) -%}
+        {%- set _std_results = (_cyberark_add_std_result | default({'results': []})).results | default([]) -%}
+        {%- set _custom_results = (_cyberark_add_custom_result | default({'results': []})).results | default([]) -%}
+        {%- set _std_role_results = (_cyberark_add_std_role_retry_result | default({'results': []})).results | default([]) -%}
+        {%- set _custom_role_results = (_cyberark_add_custom_role_retry_result | default({'results': []})).results | default([]) -%}
+        {%- set _all_add_results =
+            (_std_results | map('combine', _std_tag) | list)
+            + (_custom_results | map('combine', _custom_tag) | list) -%}
+        {%- set _all_role_retry_results =
+            (_std_role_results | map('combine', _std_role_tag) | list)
+            + (_custom_role_results | map('combine', _custom_role_tag) | list) -%}
         {%- for r in _all_add_results -%}
           {%- if not (r.skipped | default(false)) -%}
             {%- if r.failed | default(false) -%}
@@ -246,7 +260,8 @@
                     'action': 'add-failed', 'detail': r.json.ErrorMessage | default('group not defined in CyberArk')}] -%}
               {%- endif -%}
             {%- else -%}
-              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name, 'action': 'add', 'detail': ''}] -%}
+              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
+                  'action': 'add', 'detail': r._cyberark_tier_detail}] -%}
             {%- endif -%}
           {%- endif -%}
         {%- endfor -%}
@@ -256,7 +271,8 @@
               {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
                   'action': 'add-failed', 'detail': r.json.ErrorMessage | default('not found as vault Group or Identity Role')}] -%}
             {%- else -%}
-              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name, 'action': 'add', 'detail': '(as Role)'}] -%}
+              {%- set ns.rows = ns.rows + [{'safe': cyberark_safe_name, 'type': 'member', 'item': r.item.name,
+                  'action': 'add', 'detail': r._cyberark_tier_detail}] -%}
             {%- endif -%}
           {%- endif -%}
         {%- endfor -%}

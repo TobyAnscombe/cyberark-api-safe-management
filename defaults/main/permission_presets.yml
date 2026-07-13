@@ -242,3 +242,30 @@ cyberark_safe_permissions_connect_only:
   moveAccountsAndFolders: false
   requestsAuthorizationLevel1: false
   requestsAuthorizationLevel2: false
+
+# Password/secret retrieval only — no PSM 'use' session. Inverse of
+# connect_only; common for automation or scripts that need the credential
+# value itself rather than an interactive session.
+cyberark_safe_permissions_retrieve_only:
+  useAccounts: false
+  retrieveAccounts: true
+  listAccounts: true
+  addAccounts: false
+  updateAccountContent: false
+  updateAccountProperties: false
+  initiateCPMAccountManagementOperations: false
+  specifyNextAccountContent: false
+  renameAccounts: false
+  deleteAccounts: false
+  unlockAccounts: false
+  manageSafe: false
+  manageSafeMembers: false
+  backupSafe: false
+  viewAuditLog: false
+  viewSafeMembers: false
+  accessWithoutConfirmation: false
+  createFolders: false
+  deleteFolders: false
+  moveAccountsAndFolders: false
+  requestsAuthorizationLevel1: false
+  requestsAuthorizationLevel2: false

@@ -175,6 +175,7 @@ A few more presets ship for common access patterns beyond CyberArk's four built-
 | `cyberark_safe_permissions_ppa_owner` | Personal privileged account owner, CPM-managed (`automatic_management: true`) — user triggers CPM rotation rather than setting the password directly. |
 | `cyberark_safe_permissions_personal_owner` | Personal account owner, no CPM (`automatic_management: false`) — user manages their own password directly. Differs from `ppa_owner` in exactly `updateAccountContent` and `initiateCPMAccountManagementOperations`; defined as a `combine()` on top of it. |
 | `cyberark_safe_permissions_connect_only` | PSM session access only, no password retrieval — e.g. third-party vendor access. |
+| `cyberark_safe_permissions_retrieve_only` | Password/secret retrieval only, no PSM session — inverse of `connect_only`; e.g. automation or scripts needing the credential value. |
 
 ### Break glass access
 
